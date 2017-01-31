@@ -1,0 +1,59 @@
+    <form class="entry form-inline" action="textP" method="POST" id="textP"> 
+
+
+    <div class="row clearfix">
+        <div class="col-md-9">
+   
+        <label for="site">Site: </label>
+
+        <select name="site" class="form-control">
+        <option>Mauna Kea</option>
+        </select>
+
+        <div class="input-group date">
+            <input type="text" size="11" class="form-control" id="sitedate" name="date" required aria-required="true" placeholder="YYYY-MM-DD" pattern="^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$">
+            <div class="input-group-addon">
+            <span class="glyphicon glyphicon-calendar"></span>
+            </div>
+        </div>
+
+        <br>
+        <label for="equinox">Equinox: </label>
+        <select name="equinox" class="form-control">
+        <option selected="selected" >2000.0</option>
+        <option>1950.0</option>
+        <option>1900.0</option>    
+        </select>
+
+
+
+
+        </div>
+
+        
+
+
+    </div>
+
+
+    <div class="row clearfix"> 
+        <div class="col-md-9 table-responsive">
+
+        <div>
+        <br>
+        <label for="title">RA DEC Name</label>
+        <br>
+
+        <textarea name="radec" rows="10" cols="50" placeholder="123456.789  +-123456.78  Name                                             12:34:06.789  +-12:04:56.78  Name                                               ..." class="form-control"  required></textarea>
+
+        </div>
+
+        </div>
+
+    </div>
+
+    </form>
+
+    <br>
+    <input type="submit" value="Plot" form="textP" class="btn btn-success" id="plot">    <!-- </button> -->
+

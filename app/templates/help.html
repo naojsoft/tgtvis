@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block title %}Help{% endblock %}
+
+{% block scripts %}
+{{super()}}
+
+<script type=text/javascript src="{{ url_for('static', filename='js/target.js') }}"></script>
+<script type=text/javascript src="{{ url_for('static', filename='js/bootstrap-datepicker.js') }}"></script>
+<script type=text/javascript src="{{ url_for('static', filename='js/jquery-1.9.1.min.js') }}"></script>
+<script type=text/javascript src="{{ url_for('static', filename='js/datepicker.js') }}"></script>
+
+
+{% endblock %}
+
+
+{% block page_content %}
+
+<div class="container">	
+
+<h1>Help!</h1>
+
+<br>
+<h2>Text</h2>
+<dl>
+   <dt>Format</dt>
+   <dd>- RA: hhmmss.sss or hh:mm:ss.sss</dd>
+   <dd>- DEC: ddmmss.ss or dd:mm:ss.ss</dd>
+   <dd>- Name: space allowed btw characters, short name preferred</dd>
+   <dd>- Format error will be indicated if any</dd>
+</dl>
+
+
+<h2>Ope</h2> 
+<dl>
+   <dt>Choose Files</dt>
+   <dd>- You can choose multiple ope files</dd>
+   <dd>- If an ope includes the line *load xxxx.prm, choose a prm file as well</dd>
+</dl>
+
+
+
+<h2>Download</h2> 
+<p>Right click on plotted data and save it</p>
+<br>
+
+<h2>Web Browser</h2> 
+<p>Chrome, Firefox tested</p>
+<br>
+
+<h2>Contact Us</h2> 
+<p>Takeshi Inagaki:  tinagaki@naoj.org</p>
+
+</div>
+
+
+{% endblock %}

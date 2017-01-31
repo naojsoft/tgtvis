@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+
+{% block title %}Targets{% endblock %}
+
+
+
+{% block page_content %}
+
+
+
+<div id="tab" class="container">	
+    <ul class="nav nav-tabs">
+        <li class="active">
+        <a href="#1" data-toggle="tab">Text</a>
+        </li>
+        <li><a href="#2" data-toggle="tab">Ope</a>
+        </li>
+    </ul>
+
+
+
+<div class="tab-content ">
+    <div class="page-header">
+    <h1>Target Visibility</h1>
+    </div>
+
+    <div class="tab-pane active" id="1">
+        {% include "text.html" %}
+    </div>
+    <div class="tab-pane" id="2">
+        {% include "ope.html" %}
+    </div>
+
+
+</div>
+</div>
+
+
+
+{% endblock %}
