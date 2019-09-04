@@ -8,6 +8,9 @@ from bokeh.layouts import layout, row, column
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
+from astropy.coordinates import SkyCoord
+import astropy.units as u
+
 from qplan.common import moon
 from qplan.util.site import site_subaru as subaru
 from qplan.entity import StaticTarget
@@ -19,7 +22,6 @@ from app.main.laser_plot import LaserPlot
 
 from app.main.ope import get_vars_ope, get_coords
 
-import astro.radec as radec 
 
 # ra/dec 123456.789
 ra_pattern1 = "^(2[0-3]|[0-1][0-9])[0-5][0-9][0-5][0-9](\.\d{1,3})?$"
@@ -73,8 +75,9 @@ def get_laser_info(data, logger):
         if not d:
             continue
         name = d[0]
-        ra = radec.raDegToString(float(d[1]), format='%02d:%02d:%06.3f') 
-        dec = radec.decDegToString(float(d[2]), format='%s%02d:%02d:%05.2f')
+        c = SkyCoord(ra=float(d[1])*u.degree, dec=float(d[2])*u.degree)
+        ra = c.ra.to_string(unit=u.hourangle, precision=3, sep=':', pad=True)
+        dec = c.dec.to_string(sep=':', precision=2, alwayssign=True, pad=True)
         equinox = 2000.0
         #targets.append(Bunch.Bunch(name=name, ra=ra, dec=dec, equinox=equinox))
         #t = Bunch.Bunch(name=name, ra=ra, dec=dec, equinox=equinox)
