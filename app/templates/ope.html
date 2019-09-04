@@ -1,4 +1,4 @@
-    <form  class="entry form-inline" action="opeP" method="POST" id="opeP" enctype="multipart/form-data">
+    <form  class="entry form-inline" action="Ope" method="POST" id="ope" enctype="multipart/form-data">
 
 
     <div class="row clearfix">
@@ -6,11 +6,11 @@
         <label for="site">Site</label><br>
 
         <select name="site" class="form-control">
-            <option>Mauna Kea</option>
+            <option value="subaru">Mauna Kea</option>
         </select>
 
         <div class="input-group date">
-            <input type="text" size="11" class="form-control" id="sitedate_ope" name="date" required aria-required="true" placeholder="YYYY-MM-DD" pattern="^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$">
+            <input type="text" class="form-control" id="sitedate_ope" name="date" required aria-required="true" placeholder="YYYY-MM-DD" pattern="^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$">
             <div class="input-group-addon">
             <span class="glyphicon glyphicon-calendar"></span>
             </div>
@@ -20,10 +20,11 @@
     </div>
     <br>
 
-    <p><input type=file name="ope[]"  required aria-required="true"  class="btn btn-default" multiple="">
+    <!-- <p><input type=file name="ope[]"  required aria-required="true"  class="btn btn-default" multiple=""> -->
+    <p><input type=file name="ope[]" required aria-required="true" class="filestyle" data-buttonBefore="true" data-buttonName="btn-primary" data-placeholder="ope,prm files"  multiple="">     
 
-     <br>   
-     <input type=submit value="Plot" form="opeP" class="btn btn-success" id="plot">
+     <br><br>   
+     <input type=submit value="Plot" form="ope" class="btn btn-success" id="plot">
         
     </form>
 

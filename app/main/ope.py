@@ -92,7 +92,7 @@ def locate_prm(filename, include_dirs):
     Returns the first valid path found.
     """
 
-    print "##### ", filename, include_dirs
+    #print "##### ", filename, include_dirs
 
     for dirpath in include_dirs:
         path = os.path.join(dirpath, filename)
@@ -119,7 +119,7 @@ def prepend_prm(lines, filename, include_dirs):
         for line in newlines:
             lines.insert(0, line)
 
-    except IOError, e:
+    except IOError as e:
         raise OPEerror(str(e))
 
 
@@ -156,10 +156,12 @@ def get_vars(plist, include_dirs):
     while len(lines) > 0:
         line = lines.pop(0)
         line = line.strip()
-        match = load_regex.match(line)
-        if match:
-            prepend_prm(lines, match.group(1), include_dirs)
-            continue
+
+        # as of Jun 16 2018, disable prm written in an ope file
+        # match = load_regex.match(line)
+        # if match:
+        #     prepend_prm(lines, match.group(1), include_dirs)
+        #     continue
 
         # convert to uc
         line = toupper(line)
@@ -174,7 +176,7 @@ def get_vars(plist, include_dirs):
             substDict[var] = val
 
 
-    print "SUBSTDICT: ", substDict
+    print("SUBSTDICT: {}".format(substDict))
     return substDict
 
 
@@ -183,7 +185,7 @@ def get_vars_ope(opebuf, include_dirs):
     of an OPE file."""
     (header, plist, cmds) = get_sections(opebuf)
 
-    print "##### PLIST", plist
+    print("##### PLIST={}".format(plist))
     return get_vars(plist, include_dirs)
 
 def check_ra(ra):
@@ -199,7 +201,7 @@ def check_ra(ra):
         assert((mn >= 0) and (mn < 60)), OPEerror("Bad minutes: %d" % (mn))
         sec = float(match.group('sec'))
         assert((sec >= 0) and (sec < 60)), OPEerror("Bad seconds: %d" % (sec))
-    except Exception, e:
+    except Exception as e:
         raise OPEerror("RA of '%s' appears to have incorrect values: %s" % (
             ra, str(e)))
 
@@ -217,7 +219,7 @@ def check_dec(dec):
         assert((mn >= 0) and (mn < 60)), OPEerror("Bad minutes: %d" % (mn))
         sec = float(match.group('sec'))
         assert((sec >= 0) and (sec < 60)), OPEerror("Bad seconds: %d" % (sec))
-    except Exception, e:
+    except Exception as e:
         raise OPEerror("DEC of '%s' appears to have incorrect values: %s" % (
             dec, str(e)))
 
@@ -274,9 +276,9 @@ def get_coords(line):
     dec_info = check_dec(dec)
 
     equinox = match3.group(1)
-    print 'GET_COORDS........'
+    print('GET_COORDS........')
     equinox_info = check_equinox(equinox)
-    print 'GET_COORDS........  ', equinox_info 
+    print('GET_COORDS........  {}'.format(equinox_info)) 
 
     return (ra_info, dec_info, equinox_info)
 
@@ -352,7 +354,7 @@ def check_ope(buf, include_dirs=None):
             try:
                 check_coords(line)
 
-            except OPEerror, e:
+            except OPEerror as e:
                 bnch = Bunch.Bunch(errstr=str(e), lineno=lineno,
                                    text=line)
                 badcoords.append(bnch)
@@ -411,7 +413,7 @@ def getCmd(opebuf, cmdstr, include_dirs):
 
         return cmdstr
 
-    except Exception, e:
+    except Exception as e:
         raise OPEerror("Can't extract command: %s" % str(e))
 
 
@@ -421,7 +423,7 @@ def main(options, args):
     opebuf = in_f.read()
     in_f.close()
 
-    print getCmd(opebuf, options.cmdstr, [])
+    #print getCmd(opebuf, options.cmdstr, [])
 
 
 if __name__ == '__main__':
@@ -452,7 +454,7 @@ if __name__ == '__main__':
     elif options.profile:
         import profile
 
-        print "%s profile:" % sys.argv[0]
+        print("%s profile:" % sys.argv[0])
         profile.run('main(options, args)')
 
     else:

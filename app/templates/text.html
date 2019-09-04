@@ -1,5 +1,4 @@
-    <form class="entry form-inline" action="textP" method="POST" id="textP"> 
-
+    <form class="entry form-inline" action="Text" method="POST" id="textP"> 
 
     <div class="row clearfix">
         <div class="col-md-9">
@@ -7,7 +6,7 @@
         <label for="site">Site: </label>
 
         <select name="site" class="form-control">
-        <option>Mauna Kea</option>
+        <option value="subaru">Mauna Kea</option>
         </select>
 
         <div class="input-group date">
@@ -25,13 +24,7 @@
         <option>1900.0</option>    
         </select>
 
-
-
-
         </div>
-
-        
-
 
     </div>
 
@@ -41,17 +34,12 @@
 
         <div>
         <br>
-        <label for="title">RA DEC Name</label>
+        <label for="title">Name RA DEC</label>
         <br>
-
-        <textarea name="radec" rows="10" cols="50" placeholder="123456.789  +-123456.78  Name                                             12:34:06.789  +-12:04:56.78  Name                                               ..." class="form-control"  required></textarea>
-
+        <textarea name="radec" rows="10" cols="50" placeholder="Name(no space) 123456.789  +-123456.78                                             Name(no space) 12:34:06.789  +-12:04:56.78                                               ..." class="form-control"  required></textarea>
         </div>
-
         </div>
-
     </div>
-
     </form>
 
     <br>

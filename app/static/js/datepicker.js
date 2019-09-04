@@ -9,3 +9,17 @@ $(document).ready(function () {
         format: "yyyy-mm-dd"
     });  
 });
+
+$(document).ready(function () {
+    $('#laser').datepicker({
+        format: "yyyy-mm-dd"
+	
+    });  
+});
+
+$(document).ready(function () {
+    $('#target').datepicker({
+        format: "yyyy-mm-dd"
+	
+    });  
+});

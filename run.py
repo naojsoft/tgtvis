@@ -3,13 +3,16 @@
 import sys
 import os
 
+import logging
+
 from app import create_app
 
 
 def main(options, args):
 
-    app = create_app(options.appdir, options.config)
-    app.run(host=options.host, port=int(options.port))
+    target = create_app(options, options.config)
+    
+    target.run(host=options.host, port=options.port)
 
 
 if __name__ == '__main__':
@@ -27,17 +30,24 @@ if __name__ == '__main__':
     optprs.add_option("--config", dest="config", default="development",
                       metavar="CONFIG",
                       help="configuration. [development|testing|]")
-    optprs.add_option("--appdir", dest="appdir", default="/home/takeshi/target",
-                      metavar="APPDIR",
-                      help="application directory.")
-    optprs.add_option("--host", dest="host", default="133.40.166.37",
+    optprs.add_option("--host", dest="host", default="133.40.166.25",
                       metavar="HOST",
                       help="host")
-    optprs.add_option("--port", dest="port", default=5001,
+    optprs.add_option("--port", dest="port", default=5055,
                       metavar="PORT",
                       help="port")
-
-
+    optprs.add_option("--log", dest="logfile", metavar="FILE",
+                      help="Write logging output to FILE")
+    optprs.add_option("--loglevel", dest="loglevel", metavar="LEVEL",
+                      type="int", default=logging.INFO,
+                      help="Set logging level to LEVEL")
+    optprs.add_option("--loglimit", dest="loglimit", metavar="NUM",
+                      type="int", default=200*1024*1024,
+                      help="Set logging limit to NUM bytes before rollover")
+    optprs.add_option("--stderr", dest="logstderr", default=False,
+                      action="store_true",
+                      help="Copy logging also to stderr")
+   
     (options, args) = optprs.parse_args(sys.argv[1:])
 
     # Are we debugging this?

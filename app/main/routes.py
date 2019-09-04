@@ -1,31 +1,31 @@
 import os
-import random
+
+import collections
+from datetime import datetime
+import operator
 
 from flask import render_template, redirect, url_for, request, current_app, session, send_from_directory
 #from flask.ext.login import login_required, login_user, logout_user
 from . import main
 #from .forms import TargetForm
 from flask import make_response
+from flask import current_app as app
 
 from werkzeug import secure_filename
 
 from functools import wraps, update_wrapper
-from datetime import datetime
 from app.main import helper_func as helper
 
+import tempfile
 
-def nocache(view):
-    @wraps(view)
-    def no_cache(*args, **kwargs):
-        response = make_response(view(*args, **kwargs))
-        response.headers['Last-Modified'] = datetime.now()
-        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '-1'
-        return response
-        
-    return update_wrapper(no_cache, view)
+from bokeh.embed import components
+from bokeh.util.string import encode_utf8
+from bokeh.resources import INLINE
 
+from bokeh.resources import CDN
+from bokeh.embed import file_html
+
+from ginga.misc import Bunch
 
 def delete_files(files):
 
@@ -35,28 +35,13 @@ def delete_files(files):
 @main.route('/')
 def index():
 
+    app.logger.debug('target index...')
     return render_template('menu.html')
-
-@main.route('/ope')
-def ope():
-
-    return render_template('ope.html')
-
-@main.route('/text')
-def text():
-
-    return render_template('text.html')
-
-#@main.route('/single')
-#@nocache
-#def single():
-#    return render_template('target.html')
 
 @main.route('/help')
 def help():
 
     return render_template('help.html')
-
 
 @main.route('/opeError/<error>')
 
@@ -64,126 +49,171 @@ def opeError(error):
 
     return render_template('opeError.html', error=error)
 
-@main.route('/visibility/<filename>/<errors>')
-def visibility(filename, errors=None):
+@main.route('/Laser', methods=['POST'])
+def Laser():
 
-    return render_template('visibility.html', filename=filename, errors=errors)
+    errors = []
 
-@main.route('/target/<filename>')
-def display(filename):
-    return send_from_directory(current_app.config['APP_IMAGE'], filename, cache_timeout=0)
+    if  not request.method in ['POST']:
+        return redirect(url_for('main.index'))
 
-@main.route('/opeP', methods=['POST'])
-def opeP():
+    file = request.files.get("laser")
+    #mydate = request.form.get("date")
+    mysite = helper.site(request.form.get('site'))
 
+    app.logger.debug('laser file. {}'.format(file))
+    
+    try:
+        data = file.readlines()
+        app.logger.debug('file data={}'.format(data))
+        #mydate, targets, laser_safe_time = helper.get_laser_info(data, app.logger)
+        mydate, targets = helper.get_laser_info(data, app.logger)
+    except Exception as e:
+        app.logger.error('Error: reading laser file. {}'.format(e))
+        err = 'Reading laser file. {}'.format(e)
+        errors.append(err)
+
+    plots = []
+
+    # Grab the static resources
+    js_resources = INLINE.render_js()
+    css_resources = INLINE.render_css()
+
+    for target in sorted(targets, key = lambda i: (i.name, i.ra, i.dec)):
+        
+        safe_time = target.safe_time
+        app.logger.debug('Name: {}'.format(target.name))
+        app.logger.debug('Laser safe time. {}'.format(safe_time))
+        
+        try:
+            fig = helper.populate_interactive_laser(target, safe_time, mysite, mydate, app.logger)
+        except Exception as e:
+            app.logger.error('Error: failed to populate laser plot. {}'.format(e))
+            err = 'Plotting laser collision for {}. {}'.format(target.name, e)
+            errors.append(err)
+            return render_template('laser_visibility.html', errors=errors)
+        else:
+            script, div = components(fig)
+            plots.append(Bunch.Bunch(plot_script=script, plot_div=div, name=target.name, ra=target.ra, dec=target.dec))
+    
+            # render template
+    html = render_template('laser_visibility.html', js_resources=js_resources, css_resources=css_resources, targets=plots)
+    return encode_utf8(html)
+
+@main.route('/Ope', methods=['POST'])
+def Ope():
+
+    if  not request.method in ['POST']:
+        return redirect(url_for('main.index'))
+    
     files = request.files.getlist("ope[]")
+    app.logger.debug('files={}'.format(files))
+    
     opes = []
     del_files = []
-    include_dir = current_app.config['APP_UPLOAD']
+    upload_dir = current_app.config['APP_UPLOAD']
 
     for f in files:
         filename = secure_filename(f.filename)
         
-        ope = os.path.join(include_dir, filename) 
+        ope = os.path.join(upload_dir, filename) 
         f.save(ope)
         del_files.append(ope)
         if filename.lower().endswith(".ope"):
             opes.append(ope)
 
+    app.logger.debug('opes={}'.format(opes))        
+ 
     try:  
-        targets = helper.ope(opes, include_dir)
-        errors = helper.format_error(targets)
+        targets = helper.ope(opes, upload_dir, app.logger)
+        #errors = helper.format_error(targets, app.logger)
     except Exception as e:
-        print 'OPE ERROR ', e 
-        delete_files(del_files)   
+        app.logger.error('Error: invalid ope file. {}'.format(e))
+        err_msg = "Plot Error: {}".format(e)
+        #errors.append(err_msg)
+        delete_files(del_files)
+        return render_template('target_visibility.html', errors=[err_msg])
 
-        return render_template('opeError.html', error=e)
+    #filepath = tempfile.NamedTemporaryFile().name
+    #filepath = os.path.join(current_app.config['APP_UPLOAD'], filename)
 
-    num = random.randrange(0, 500)
-    target_name = 'target{}.png'.format(num)
-    image_path = os.path.join(current_app.config['APP_IMAGE'], target_name)
+    mysite = helper.site(request.form.get('site'))
+    mydate = request.form.get('date')
 
-    try:
-        mysite = helper.site(request.form)
-        mydate = helper.date(request.form)
-        helper.populate(targets, mysite, mydate, filename=image_path)
-    except Exception as e:
-        print "EEEEEEEEEEEEEEE", e
-        target_name = None
+    #app.logger.debug('targets={}'.format(targets))
+    #app.logger.debug('filepath={}'.format(filepath))
+    app.logger.debug('mydate={}'.format(mydate))
 
     delete_files(del_files)
+    
+    try:
+        #fig = helper.populate_target2(targets, mysite, mydate, filepath, app.logger)
+        fig = helper.populate_interactive_target(target_list=targets, mysite=mysite, mydate=mydate, logger=app.logger)
+    except Exception as e:
+        app.logger.error('Error: failed to populate ope plot. {}'.format(e))
+        err_msg = "Plot Error: {}".format(e)
+        #errors.append(err_msg)
+        return render_template('target_visibility.html', errors=[err_msg])
+    else:
 
-    return render_template('visibility.html', filename=target_name, errors=errors)
+        # Grab the static resources
+        js_resources = INLINE.render_js()
+        css_resources = INLINE.render_css()
 
+        # render template
+        script, div = components(fig)
+        html = render_template(
+            'target_visibility.html',
+            plot_script=script,
+            plot_div=div,
+            js_resources=js_resources,
+            css_resources=css_resources,
+            errors=None)
 
-@main.route('/textP', methods=['POST'])
-def textP():
+        return encode_utf8(html)
 
-    num = random.randrange(0, 100)
-    filename = 'target{}.png'.format(num)
-    image_path = os.path.join(current_app.config['APP_IMAGE'], filename)
+@main.route('/Text', methods=['POST'])
+def Text():
 
-    equinox = helper.equinox(request.form)
-    targets = helper.text_dict(target_form=request.form, equinox=equinox)
-    errors = helper.format_error(targets)
+    if  not request.method in ['POST']:
+        return redirect(url_for('main.index'))
+        #return render_template('menu.html')
+
+    #print("Form action={}".format(request.form['action']))
+    #print("Form={}".format(request.form))
+
+    equinox = request.form.get('equinox')
+    radec = request.form.get('radec')
+    targets = helper.text_dict(radec=radec, equinox=equinox, logger=app.logger)
+    app.logger.debug('Text targets. {}'.format(targets))
+    errors = helper.format_error(targets, app.logger)
+
+    mysite = helper.site(request.form.get('site'))
+    mydate = request.form.get('date')
 
     try:
-        mysite = helper.site(request.form)
-        mydate = helper.date(request.form)
-        helper.populate(targets, mysite, mydate, filename=image_path)
+        fig = helper.populate_interactive_target(target_list=targets, mysite=mysite, mydate=mydate, logger=app.logger)
     except Exception as e:
-        print e
-        filename = None
+        app.logger.error('Error: failed to populate text plot. {}'.format(e))
+        err_msg = "Plot Error: {}".format(e)
+        errors.append(err_msg)
+        return render_template('target_visibility.html', errors=errors)
+    else:    
+        # Grab the static resources
+        js_resources = INLINE.render_js()
+        css_resources = INLINE.render_css()
 
-    return render_template('visibility.html', filename=filename, errors=errors)
+        # render template
+        script, div = components(fig)
 
+        #print('div={}'.format(div))
+        
+        html = render_template(
+            'target_visibility.html',
+            plot_script=script,
+            plot_div=div,
+            js_resources=js_resources,
+            css_resources=css_resources,
+            errors=errors)
 
-# @main.route('/target', methods=['POST'])
-# #@nocache
-# def target():
-
-#     print "##########", len(request.form), request
-#     if len(request.form) == 5:
-#         print 'EMPTY'
-#         return render_template('target.html')
-
- 
-#     targets = []
-#     target_dict = {}
-#     ra = 'ra'
-#     dec = 'dec'
-#     name = 'name'
-#     print request.form
-#     print request
-#     #print request.form['target']
- 
-#     #image_dir = current_app.config['APP_IMAGE']
-
-#     num = random.randrange(0, 100)
-#     filename = 'target{}.png'.format(num)
-
-#     #print url_for('static', filename=filename)
-#     #print  os.path.dirname(__file__)
-
-#     #path = os.path.join('/home/takeshi/target/app/static/target_AAA.png')
-#     #print 'PATH ', path
-#     #try:
-#     #    os.remove(path)
-#     #except Exception:
-#     #    pass
-
-#     image_path = os.path.join(current_app.config['APP_IMAGE'], filename)
-#     #print "IMAGE PATH ", image_path 
-
-
-
-    
-#     targets = helper.target_dict(request.form)
-#     print targets
-#     mysite = helper.site(request.form)
-#     mydate = helper.date(request.form)
-#     helper.populate(targets, mysite, mydate, filename=image_path)
-
-#     return render_template('visibility.html', filename=filename, errors=[])
-#     #return redirect(url_for('main.visibility', filename=filename))
-
+        return encode_utf8(html)

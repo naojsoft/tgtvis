@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Target Visibility{% endblock %}
+
+{% block page_content %}
+
+    <div class="container-fluid">
+  
+    <h1>Laser Safe Time</h1>
+    <br>
+
+    {% if errors %} 
+    <div class="alert alert-danger">
+    <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+    <strong>ERROR!</strong>
+    {% for e in errors %}
+        <li>{{ e }}</li>
+    {% endfor %}
+    </div>
+
+    {% endif %}
+    
+
+        {{ js_resources|indent(4)|safe }}
+        {{ css_resources|indent(4)|safe }}
+
+        {% for target in targets %}	
+         {{ target.plot_script|indent(4)|safe }}
+
+        <div class="container-fluid">
+        <div class="panel-group">
+        <div class="panel panel-default">
+
+
+        {% set ID="ID{}".format(loop.index)  %}
+        <div class="panel-heading">
+        <a data-toggle="collapse" href="#{{ ID }}">
+	<h4 class="panel-title, blue-text"><b>{{ target.name }} {{ target.ra }} {{ target.dec }}</b></h4>
+        </a>
+        </div>
+        <div id="{{ ID }}" class="panel-collapse collapse">
+	<div class="panel-body">
+        {{ target.plot_div|indent(4)|safe }} 
+        </div>
+	<div class="panel-footer"></div>
+        </div>
+
+        </div>
+        </div>
+        </div>
+
+        {% endfor %}
+
+
+    </div>
+
+{% endblock %}

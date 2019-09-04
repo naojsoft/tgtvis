@@ -25,24 +25,48 @@
 <h2>Text</h2>
 <dl>
    <dt>Format</dt>
+   <dd>- Name: no space allowed btw characters, short name preferred</dd>
    <dd>- RA: hhmmss.sss or hh:mm:ss.sss</dd>
    <dd>- DEC: ddmmss.ss or dd:mm:ss.ss</dd>
-   <dd>- Name: space allowed btw characters, short name preferred</dd>
    <dd>- Format error will be indicated if any</dd>
+   <dd>- Max num of targets is 35-ish</dd>
 </dl>
 
 
 <h2>Ope</h2> 
 <dl>
-   <dt>Choose Files</dt>
+   <dt>Upload ope/prm files</dt>
    <dd>- You can choose multiple ope files</dd>
-   <dd>- If an ope includes the line *load xxxx.prm, choose a prm file as well</dd>
+   <dd>- If an ope includes the line *load xxxx.prm, upload a prm file as well</dd>
+   <dd>- Max num of targets is 35-ish</dd>
 </dl>
 
 
 
-<h2>Download</h2> 
-<p>Right click on plotted data and save it</p>
+<h2>Laseer</h2> 
+<dl>
+  <dt>Upload a laser collision file </dt>
+  <dd>- The file must be a file provided by a suport scientist.</dd>
+</dl>
+
+
+
+<h2>Interactive Methods</h2> 
+<dl>
+  <dt>Legend</dt>
+  <dd>- Turn on/off entries by clicking.</dd>
+  <dt>Buttons for Laser collision time</dt>
+  <dd>- Turn on/off laser collision time.</dd>
+  <dt>Active Tools</dt>
+  <dd>- Pan Tool <img src="{{ url_for('static', filename="img/Pan.png") }}" width="15" height="15">: Pan the plot by left-dragging a mouse.</dd>
+  <dd>- BoxZoom Tool <img src="{{ url_for('static', filename="img/BoxZoom.png") }}" width="15" height="15">: Zoom the plot bounds.</dd>
+  <dd>- WheelZoom Tool <img src="{{ url_for('static', filename="img/WheelZoom.png") }}" width="15" height="15">: Zoom the plot in and out</dd>
+  <dd>- Undo Tool <img src="{{ url_for('static', filename="img/Reset.png") }}" width="15" height="15">:  Restore previous state of the plot.</dd>
+  <dd>- Save Tool <img src="{{ url_for('static', filename="img/Save.png") }}" width="15" height="15">: Save a PNG image of the plot</dd>
+</dl>
+
+
+
 <br>
 
 <h2>Web Browser</h2> 
