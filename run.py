@@ -30,7 +30,7 @@ if __name__ == '__main__':
     optprs.add_option("--config", dest="config", default="development",
                       metavar="CONFIG",
                       help="configuration. [development|testing|]")
-    optprs.add_option("--host", dest="host", default="133.40.166.25",
+    optprs.add_option("--host", dest="host", default="",
                       metavar="HOST",
                       help="host")
     optprs.add_option("--port", dest="port", default=5055,
