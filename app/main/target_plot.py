@@ -22,7 +22,7 @@ from bokeh.models import Span
 from bokeh.core.properties import String
 
 try:
-    from app.main.base_plot import BasePlot
+    from .base_plot import BasePlot
 except:
     from base_plot import BasePlot
     

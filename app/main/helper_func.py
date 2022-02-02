@@ -17,10 +17,10 @@ from qplan.entity import StaticTarget
 from ginga.misc import Bunch
 #from ginga.misc.log import get_logger
 
-from app.main.target_plot import TargetPlot
-from app.main.laser_plot import LaserPlot
+from .target_plot import TargetPlot
+from .laser_plot import LaserPlot
 
-from app.main.ope import get_vars_ope, get_coords
+from .ope import get_vars_ope, get_coords
 
 
 # ra/dec 123456.789

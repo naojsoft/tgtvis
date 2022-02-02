@@ -11,15 +11,16 @@ from . import main
 from flask import make_response
 from flask import current_app as app
 
-from werkzeug import secure_filename
+#from werkzeug import secure_filename
+from werkzeug.utils import secure_filename
 
 from functools import wraps, update_wrapper
-from app.main import helper_func as helper
+from . import helper_func as helper
 
 import tempfile
 
 from bokeh.embed import components
-from bokeh.util.string import encode_utf8
+#from bokeh.util.string import encode_utf8
 from bokeh.resources import INLINE
 
 from bokeh.resources import CDN
@@ -91,14 +92,18 @@ def Laser():
             app.logger.error('Error: failed to populate laser plot. {}'.format(e))
             err = 'Plotting laser collision for {}. {}'.format(target.name, e)
             errors.append(err)
-            return render_template('laser_visibility.html', errors=errors)
+            return render_template('laser_visibility.html', js_resources=js_resources, css_resources=css_resources, targets=plots, errors=errors)
         else:
             script, div = components(fig)
             plots.append(Bunch.Bunch(plot_script=script, plot_div=div, name=target.name, ra=target.ra, dec=target.dec))
     
             # render template
     html = render_template('laser_visibility.html', js_resources=js_resources, css_resources=css_resources, targets=plots)
-    return encode_utf8(html)
+
+    #return html
+    html = html.encode('utf-8')
+    return html
+    #return encode_utf8(html)
 
 @main.route('/Ope', methods=['POST'])
 def Ope():
@@ -170,7 +175,9 @@ def Ope():
             css_resources=css_resources,
             errors=None)
 
-        return encode_utf8(html)
+        html = html.encode('utf-8')
+        return html
+        #return encode_utf8(html)
 
 @main.route('/Text', methods=['POST'])
 def Text():
@@ -216,4 +223,7 @@ def Text():
             css_resources=css_resources,
             errors=errors)
 
-        return encode_utf8(html)
+        #return html
+        html = html.encode('utf-8')
+        return html
+        #return encode_utf8(html)

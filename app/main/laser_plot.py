@@ -21,7 +21,7 @@ from bokeh.models.widgets import CheckboxGroup
 from bokeh.models import Span
 
 try:
-    from app.main.base_plot import BasePlot
+    from .base_plot import BasePlot
 except:
     from base_plot import BasePlot
 
@@ -126,7 +126,8 @@ class LaserPlot(BasePlot):
             #callback = CustomJS.from_coffeescript(code=code, args={})
             callback = CustomJS(code=code, args={})
             #print('making toggle...')
-            toggle = Toggle(label="{}-{}".format(s.strftime("%Y-%m-%d %H:%M:%S"), e.strftime("%H:%M:%S")), button_type="default", active=True, callback=callback, width=20, height=25)
+            toggle = Toggle(label="{}-{}".format(s.strftime("%Y-%m-%d %H:%M:%S"), e.strftime("%H:%M:%S")), button_type="default", active=True, width=20, height=25)
+            toggle.js_on_click(callback)
             self.toggles.append(toggle)
             #print('making laser annotation...')
             laser_collision = BoxAnnotation(left=s, right=e, bottom=self.y_min, top=self.y_max, fill_alpha=0.2, fill_color='magenta', line_color='magenta', line_alpha=0.2)
