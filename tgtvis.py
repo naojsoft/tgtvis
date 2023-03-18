@@ -16,7 +16,12 @@ except ModuleNotFoundError as e:
 
 def main(options, args):
 
-    target = create_app(options, options.config)
+    logger = log.get_logger('tgtvis', level=options.loglevel,
+                            options=options, log_file=options.logfile, log_stderr=options.logstderr)
+
+    logger.debug('starting tgtvis...')
+
+    target = create_app(options.config, logger)
 
     target.run(host=options.host, port=options.port)
 
@@ -75,6 +80,8 @@ else:
     # TODO: Can we set config_name to 'production'?
     config_name = os.environ.get('TGTVIS_CONFIG_NAME', 'development')
 
-    tgtvis_app = create_app(options, config_name)
+    logger = log.get_logger('tgtvis', level=options.loglevel, options=options, log_file=options.logfile)
+
+    tgtvis_app = create_app(config_name, logger)
 
 # END

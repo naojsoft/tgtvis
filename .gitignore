@@ -13,6 +13,9 @@
 *.pdf
 *.toc
 
+# Config files
+*.toml
+
 # Compiled files
 *.a
 *.o

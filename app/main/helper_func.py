@@ -24,15 +24,15 @@ from .ope import get_vars_ope, get_coords
 
 
 # ra/dec 123456.789
-ra_pattern1 = "^(2[0-3]|[0-1][0-9])[0-5][0-9][0-5][0-9](\.\d{1,3})?$"
+ra_pattern1 = "^(2[0-3]|[0-1][0-9])[0-5][0-9][0-5][0-9](\.\d+)?$"
 ra_prog1 = re.compile(ra_pattern1)
-dec_pattern1 = "^[+|-]?[0-8][0-9][0-5][0-9][0-5][0-9](\.\d{1,3})?$"
+dec_pattern1 = "^[+|-]?[0-8][0-9][0-5][0-9][0-5][0-9](\.\d+)?$"
 dec_prog1 = re.compile(dec_pattern1)
 
-# ra/dec hh:mm:ss.sss dd:mm:ss.ss    
-ra_pattern2 = "^(2[0-3]|[0-1][0-9]):[0-5][0-9]:[0-5][0-9](\.\d{1,3})?$"
+# ra/dec hh:mm:ss.sss dd:mm:ss.ss
+ra_pattern2 = "^(2[0-3]|[0-1][0-9]):[0-5][0-9]:[0-5][0-9](\.\d+)?$"
 ra_prog2 = re.compile(ra_pattern2)
-dec_pattern2 = "^[+|-]?[0-8][0-9]:[0-5][0-9]:[0-5][0-9](\.\d{1,3})?$"
+dec_pattern2 = "^[+|-]?[0-8][0-9]:[0-5][0-9]:[0-5][0-9](\.\d+)?$"
 dec_prog2 = re.compile(dec_pattern2)
 
 
@@ -46,19 +46,19 @@ def fix_time(year, month, day, hour, min, sec, logger):
 
     dif = hour - aday
     if dif >= 0:
-        logger.debug("hour {} >= 24".format(hour))
-        t = datetime.datetime(year, month, day, dif, min, sec)   
-        t += datetime.timedelta(days=1) # next day 
+        logger.debug(f"hour {hour} >= 24")
+        t = datetime.datetime(year, month, day, dif, min, sec)
+        t += datetime.timedelta(days=1) # next day
     else:
         t = datetime.datetime(year, month, day, hour, min, sec)
 
-    logger.debug("fixed time. {}".format(t))    
-    return t    
+    logger.debug(f"fixed time. {t}")
+    return t
 
 def get_laser_info(data, logger):
 
     logger.debug('get laser info...')
-    
+
     targets = []
 
     laser_info = {}
@@ -67,11 +67,11 @@ def get_laser_info(data, logger):
     data.remove(obs_date)
     obs_date = obs_date.decode('utf-8').strip()
     year, month, day = (int(ob) for ob in obs_date.split('-'))
-    
+
     for d in data:
-        logger.debug('data={}'.format(d))
+        logger.debug(f'data={d}')
         d = d.decode("utf-8").strip().split()
-        print('d stripeed={}'.format(d))
+        logger.debug(f'd strip,split={d}')
         if not d:
             continue
         name = d[0]
@@ -99,49 +99,49 @@ def get_laser_info(data, logger):
             #    laser_info.update({(name, ra, dec): [(start_time, end_time)]})
             #else:
             safe_time.append((start_time, end_time))
-        targets.append(Bunch.Bunch(name=name, ra=ra, dec=dec, equinox=equinox, safe_time=safe_time)) 
-            
-    logger.debug('obs_date. {}'.format(obs_date))            
-    logger.debug('targets. {}'.format(targets))
-    #logger.debug('laser info. {}'.format(laser_info))  
+        targets.append(Bunch.Bunch(name=name, ra=ra, dec=dec, equinox=equinox, safe_time=safe_time))
+
+    logger.debug(f'obs_date={obs_date}')
+    logger.debug(f'targets={targets}')
+    #logger.debug('laser info. {}'.format(laser_info))
 
     return (obs_date, targets)
-        
+
 def validate_ra(ra):
 
-    valid = True
+    err_msg = None
 
     if ra_prog1.match(ra):
-        ra = "{}:{}:{}".format(ra[:2], ra[2:4], ra[4:])
+        ra = f"{ra[:2]}:{ra[2:4]}:{ra[4:]}"
     elif ra_prog2.match(ra):
         pass
     else:
-        valid = False
- 
-    return (ra, valid)
+        err_msg = f"Ra format does't match.  Ra={ra}, Format: hh:mm:ss.s* or hhmmss.s*"
+
+    return (ra, err_msg)
 
 def validate_dec(dec):
 
-    valid = True
+    err_msg = None
 
     if dec_prog1.match(dec):
         sign = dec.find('-') and dec.find("+")
-        dec = "{}:{}:{}".format(dec[:3+sign], dec[3+sign:5+sign], dec[5+sign:])
+        dec = f"{dec[:3+sign]}:{dec[3+sign:5+sign]}:{dec[5+sign:]}"
     elif dec_prog2.match(dec):
         pass
     else:
-        valid = False
+        err_msg = f"Dec format does't match.  Dec={dec}, Format: dd:mm:ss.s* or ddmmss.s*"
 
-    return (dec, valid)
+    return (dec, err_msg)
 
 def validate_name(name):
 
-    valid = True
+    err_msg = None
 
     if not name:
-        name = 'No Name'
-        valid = False
-    return (name, valid)
+        name = ''
+        err_msg = "No name"
+    return (name, err_msg)
 
 def ra_format(coords):
 
@@ -164,14 +164,13 @@ def ope(opes, include_dir, logger):
             with open(ope, "r") as in_f:
                 buf = in_f.read()
         except Exception as e:
-            logger.error('Error: opening an ope file. {}'.format(e))
-
+            logger.error(f'Error: opening an ope file. {e}')
         else:
             d = get_vars_ope(buf, [include_dir,])
 
             for name, line in d.items():
                 coords = get_coords(line)
-                logger.debug('ope target name:{} coords:{}'.format(name, coords))
+                logger.debug(f'ope target name={name}, coords={coords}')
                 if coords is not None:
                     ra = ra_format(coords[0])
                     dec = dec_format(coords[1])
@@ -179,32 +178,33 @@ def ope(opes, include_dir, logger):
                     res = _validate_target(name, ra, dec, equinox, logger)
                     targets.append(res)
         in_f.close()
-    logger.debug('ope targets. {}'.format(targets))    
+    logger.debug(f'ope targets={targets}')
     return targets
 
 def _validate_target(name, ra, dec, equinox, logger):
 
-    logger.debug('validate name={}, ra={}, dec={}, equinox={}'.format(name, ra, dec, equinox))
+    logger.debug(f'validate name={name}, ra={ra}, dec={dec}, equinox={equinox}')
 
     ra, ra_valid = validate_ra(ra)
     dec, dec_valid = validate_dec(dec)
     name, name_valid = validate_name(name)
-    equinox = float(equinox) 
-    
-    valid  = False if False in [ra_valid, dec_valid, name_valid] else True
+    equinox = float(equinox)
 
-    return  Bunch.Bunch(name=name, ra=ra, dec=dec, equinox=equinox, valid=valid)
+    errs = [err for err in [ra_valid, dec_valid, name_valid] if err]
+    errs = ', '.join(errs)
+
+    return  Bunch.Bunch(name=name, ra=ra, dec=dec, equinox=equinox, err=errs)
 
 def text_dict(radec, equinox, logger):
 
     targets = []
     target_list = radec.split("\r\n")
 
-    logger.debug('text target list. {}'.format(target_list))
+    logger.debug(f'text target_list={target_list}')
 
     for t in target_list:
         t = t.strip().split()
-        logger.debug('T={}'.format(t))
+        logger.debug(f'target={t}')
         if not t:
             continue
         try:
@@ -220,10 +220,10 @@ def text_dict(radec, equinox, logger):
         except Exception as e:
             dec = 'None'
         res = _validate_target(name, ra, dec, equinox, logger)
-            
+
         targets.append(res)
 
-    logger.debug('text targets. {}'.format(targets))     
+    logger.debug(f'text targets={targets}')
     return targets
 
 
@@ -238,21 +238,20 @@ def format_error(targets, logger):
     errors = []
 
     for t in targets:
-        if not t.valid:
-            err_msg = "Format:  Name: {0:}  RA: {1:}  DEC: {2:}".format(t.name, t.ra, t.dec)
-            logger.debug('format error. {}'.format(err_msg))
-            errors.append(err_msg)
+        if t.err:
+            logger.debug(f'error. {t.err}')
+            errors.append(t.err)
 
     return errors
 
 def populate_interactive_target(target_list, mysite, mydate, logger):
 
-    print('poplulate interactive target...')
-    
+    logger.debug('poplulate interactive target...')
+
     targets = []
 
-    title = "Visibility for the night of {}".format(mydate)
-    mydate_time = '{} 17:00:00'.format(mydate)
+    title = f"Visibility for the night of {mydate}"
+    mydate_time = f'{mydate} 17:00:00'
     mysite.set_date(mysite.get_date(mydate_time))
     timezone = mysite.tz_local
 
@@ -264,9 +263,9 @@ def populate_interactive_target(target_list, mysite, mydate, logger):
     fig_args = {"x_axis_type": "datetime",  "title": title, "tools": TOOLS, "toolbar_location": toolbar_location, "plot_height": plot_height, "plot_width": plot_width,} #  "output_backend": "webgl"}
 
     plot = TargetPlot(logger, **fig_args)
-    
+
     for t in target_list:
-        if t.valid: 
+        if not t.err:
             targets.append(StaticTarget(name=t.name, ra=t.ra, dec=t.dec, equinox=t.equinox))
 
     target_data = []
@@ -277,8 +276,8 @@ def populate_interactive_target(target_list, mysite, mydate, logger):
     try:
         plot.plot_target(mysite, target_data)
     except Exception as e:
-        print(e)
-        raise TargetError("Error: ploting targets. {}".format(e))    
+        logger.error(f'error: ploting targets. {e}')
+        raise TargetError(f"Error: ploting targets. {e}")
 
     else:
         return plot.fig
@@ -287,14 +286,14 @@ def populate_interactive_target(target_list, mysite, mydate, logger):
 def populate_interactive_laser(target, collision_time, mysite, mydate, logger):
     logger.debug('populate_interactive_laser...')
 
-    mydate = '{} 17:00:00'.format(mydate)
+    mydate = f'{mydate} 17:00:00'
     mysite.set_date(mysite.get_date(mydate))
 
-    title = "Laser collision for the night of {}".format(mydate)
-    mydate_time = '{} 17:00:00'.format(mydate)
+    title = f"Laser collision for the night of {mydate}"
+    mydate_time = f'{mydate} 17:00:00'
     #mysite.set_date(mysite.get_date(mydate_time))
 
-    logger.debug('my date={}'.format(mydate))
+    logger.debug(f'my date={mydate}')
     TOOLS = "pan,wheel_zoom,box_zoom,reset,save"
     toolbar_location = 'above'
     plot_height = 810
@@ -304,9 +303,9 @@ def populate_interactive_laser(target, collision_time, mysite, mydate, logger):
     #fig_args = {"x_axis_type": "datetime",  "title": title, "tools": TOOLS, "toolbar_location": toolbar_location, "sizing_mode": sizing_mode} #  "output_backend": "webgl"}
 
     fig_args = {"x_axis_type": "datetime",  "title": title, "tools": TOOLS, "toolbar_location": toolbar_location, "plot_height": plot_height, "plot_width": plot_width, "sizing_mode": sizing_mode} #  "output_backend": "webgl"}
-    
+
     plot = LaserPlot(logger, **fig_args)
-    
+
     tgt = StaticTarget(name=target.name, ra=target.ra, dec=target.dec, equinox=target.equinox)
 
     info_list = mysite.get_target_info(tgt)
@@ -317,9 +316,8 @@ def populate_interactive_laser(target, collision_time, mysite, mydate, logger):
         plot.plot_laser(mysite, tgt_data, collision_time)
     except Exception as e:
         #print(e)
-        raise TargetError("error: {}".format(e))    
+        raise TargetError(f"error: {e}")
 
     else:
         logger.debug('returning plot fig...')
         return row(plot.fig, column(plot.toggles))
-    

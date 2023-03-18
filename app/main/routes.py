@@ -62,16 +62,16 @@ def Laser():
     #mydate = request.form.get("date")
     mysite = helper.site(request.form.get('site'))
 
-    app.logger.debug('laser file. {}'.format(file))
-    
+    app.logger.debug(f'laser file={file}')
+
     try:
         data = file.readlines()
-        app.logger.debug('file data={}'.format(data))
+        app.logger.debug(f'file data={data}')
         #mydate, targets, laser_safe_time = helper.get_laser_info(data, app.logger)
         mydate, targets = helper.get_laser_info(data, app.logger)
     except Exception as e:
-        app.logger.error('Error: reading laser file. {}'.format(e))
-        err = 'Reading laser file. {}'.format(e)
+        app.logger.error(f'Error: reading laser file. {e}')
+        err = f'Reading laser file. {e}'
         errors.append(err)
 
     plots = []
@@ -81,22 +81,22 @@ def Laser():
     css_resources = INLINE.render_css()
 
     for target in sorted(targets, key = lambda i: (i.name, i.ra, i.dec)):
-        
+
         safe_time = target.safe_time
-        app.logger.debug('Name: {}'.format(target.name))
-        app.logger.debug('Laser safe time. {}'.format(safe_time))
-        
+        app.logger.debug(f'Target name={target.name}')
+        app.logger.debug(f'Laser safe time={safe_time}')
+
         try:
             fig = helper.populate_interactive_laser(target, safe_time, mysite, mydate, app.logger)
         except Exception as e:
-            app.logger.error('Error: failed to populate laser plot. {}'.format(e))
-            err = 'Plotting laser collision for {}. {}'.format(target.name, e)
+            app.logger.error(f'Error: failed to populate laser plot. {e}')
+            err = f'Plotting laser collision for {target.name}. {e}'
             errors.append(err)
             return render_template('laser_visibility.html', js_resources=js_resources, css_resources=css_resources, targets=plots, errors=errors)
         else:
             script, div = components(fig)
             plots.append(Bunch.Bunch(plot_script=script, plot_div=div, name=target.name, ra=target.ra, dec=target.dec))
-    
+
             # render template
     html = render_template('laser_visibility.html', js_resources=js_resources, css_resources=css_resources, targets=plots)
 
@@ -110,31 +110,31 @@ def Ope():
 
     if  not request.method in ['POST']:
         return redirect(url_for('main.index'))
-    
+
     files = request.files.getlist("ope[]")
-    app.logger.debug('files={}'.format(files))
-    
+    app.logger.debug(f'files={files}')
+
     opes = []
     del_files = []
     upload_dir = current_app.config['APP_UPLOAD']
 
     for f in files:
         filename = secure_filename(f.filename)
-        
-        ope = os.path.join(upload_dir, filename) 
+
+        ope = os.path.join(upload_dir, filename)
         f.save(ope)
         del_files.append(ope)
         if filename.lower().endswith(".ope"):
             opes.append(ope)
 
-    app.logger.debug('opes={}'.format(opes))        
- 
-    try:  
+    app.logger.debug(f'opes={opes}')
+
+    try:
         targets = helper.ope(opes, upload_dir, app.logger)
         #errors = helper.format_error(targets, app.logger)
     except Exception as e:
-        app.logger.error('Error: invalid ope file. {}'.format(e))
-        err_msg = "Plot Error: {}".format(e)
+        app.logger.error(f'Error: invalid ope file. {e}')
+        err_msg = f"Plot Error: {e}"
         #errors.append(err_msg)
         delete_files(del_files)
         return render_template('target_visibility.html', errors=[err_msg])
@@ -147,15 +147,15 @@ def Ope():
 
     #app.logger.debug('targets={}'.format(targets))
     #app.logger.debug('filepath={}'.format(filepath))
-    app.logger.debug('mydate={}'.format(mydate))
+    app.logger.debug(f'mydate={mydate}')
 
     delete_files(del_files)
-    
+
     try:
         #fig = helper.populate_target2(targets, mysite, mydate, filepath, app.logger)
         fig = helper.populate_interactive_target(target_list=targets, mysite=mysite, mydate=mydate, logger=app.logger)
     except Exception as e:
-        app.logger.error('Error: failed to populate ope plot. {}'.format(e))
+        app.logger.error(f'Error: failed to populate ope plot. {e}')
         err_msg = "Plot Error: {}".format(e)
         #errors.append(err_msg)
         return render_template('target_visibility.html', errors=[err_msg])
@@ -201,11 +201,11 @@ def Text():
     try:
         fig = helper.populate_interactive_target(target_list=targets, mysite=mysite, mydate=mydate, logger=app.logger)
     except Exception as e:
-        app.logger.error('Error: failed to populate text plot. {}'.format(e))
-        err_msg = "Plot Error: {}".format(e)
+        app.logger.error(f'Error: failed to populate text plot. {e}')
+        err_msg = f"Plot Error: {e}"
         errors.append(err_msg)
         return render_template('target_visibility.html', errors=errors)
-    else:    
+    else:
         # Grab the static resources
         js_resources = INLINE.render_js()
         css_resources = INLINE.render_css()
@@ -214,7 +214,7 @@ def Text():
         script, div = components(fig)
 
         #print('div={}'.format(div))
-        
+
         html = render_template(
             'target_visibility.html',
             plot_script=script,
