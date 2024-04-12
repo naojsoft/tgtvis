@@ -1,8 +1,8 @@
 import os
-
 import re
 import datetime
-
+import csv
+import pandas as pd
 
 from bokeh.layouts import layout, row, column
 
@@ -20,8 +20,8 @@ from ginga.misc import Bunch
 from .target_plot import TargetPlot
 from .laser_plot import LaserPlot
 
-from .ope import get_vars_ope, get_coords
-
+from oscript.parse.ope import get_vars_ope, get_coords2
+from g2base.astro import radec
 
 # ra/dec 123456.789
 ra_pattern1 = "^(2[0-3]|[0-1][0-9])[0-5][0-9][0-5][0-9](\.\d+)?$"
@@ -34,6 +34,12 @@ ra_pattern2 = "^(2[0-3]|[0-1][0-9]):[0-5][0-9]:[0-5][0-9](\.\d+)?$"
 ra_prog2 = re.compile(ra_pattern2)
 dec_pattern2 = "^[+|-]?[0-8][0-9]:[0-5][0-9]:[0-5][0-9](\.\d+)?$"
 dec_prog2 = re.compile(dec_pattern2)
+
+# ra/dec  degree    0.~360.   +-90
+ra_pattern3 = "^(?:[0-9]\d?|[12]\d{2}|3[0-5]\d)(\.\d+)?$"
+ra_prog3 = re.compile(ra_pattern3)
+dec_pattern3 = "^[+|-]?[0-8]?[0-9](\.\d+)?$"
+dec_prog3 = re.compile(dec_pattern3)
 
 
 class TargetError(Exception):
@@ -116,7 +122,7 @@ def validate_ra(ra):
     elif ra_prog2.match(ra):
         pass
     else:
-        err_msg = f"Ra format does't match.  Ra={ra}, Format: hh:mm:ss.s* or hhmmss.s*"
+        err_msg = f"Ra invalid value or format.  ra={ra}, format: hh:mm:ss.s* or hhmmss.s*"
 
     return (ra, err_msg)
 
@@ -130,7 +136,7 @@ def validate_dec(dec):
     elif dec_prog2.match(dec):
         pass
     else:
-        err_msg = f"Dec format does't match.  Dec={dec}, Format: dd:mm:ss.s* or ddmmss.s*"
+        err_msg = f"Dec invalid value or format.  dec={dec}, format: dd:mm:ss.s* or ddmmss.s*"
 
     return (dec, err_msg)
 
@@ -155,29 +161,125 @@ def equinox_format(equinox):
 
     return float("{:.1f}".format(equinox))
 
+def csv_with_header(csv_file, logger):
+
+    try:
+        df = pd.read_csv(csv_file)
+        cols = {}
+        for col in df.columns:
+            logger.debug(f'col=<{col}>, col strip lowercase =<{col.lower().strip()}>')
+            cols[col] = col.lower().strip()
+        logger.debug(f'cols={cols}')
+        df = df.rename(columns=cols)
+    except Exception as e:
+        logger.error(f'error: loading csv into pandas. {e}')
+        raise TargetError(f'{e}')
+    logger.debug(f'df={df}')
+
+    #for row in df.itertuples():
+    #    logger.debug(f'row={row}')
+
+
+    return df
+
+def csv_without_header(csv_file, logger):
+
+    try:
+        df = pd.read_csv(csv_file, usecols=[0,1,2, 3], names=['name', 'ra', 'dec', 'equinox'], header=None)
+    except Exception as e:
+        logger.error(f'error: loading csv into pandas. {e}')
+        raise TargetError(f'{e}')
+
+    return df
+
+def ra_float_to_string(val, logger):
+
+    logger.debug(f'ra={val}')
+
+    leading_zero = 10
+    if val < 0.0:
+        leading_zero = 11
+
+    ra = f'{val:0{leading_zero}.3f}'
+    logger.debug(f'ra to string={ra}')
+    return ra
+
+def dec_float_to_string(val, logger):
+
+    logger.debug(f'dec={val}')
+
+    leading_zero = 9
+    if val < 0.0:
+        leading_zero = 10
+
+    dec = f'{val:0{leading_zero}.2f}'
+    logger.debug(f'dec to string={dec}')
+    return dec
+
+def read_csv(csvs, header, radec_unit,  logger):
+    targets = []
+
+    for csv_file in csvs:
+        logger.debug(f'csv file={csv_file}')
+        if header is not None:
+            df = csv_with_header(csv_file, logger)
+        else:
+            df = csv_without_header(csv_file, logger)
+
+        for row in df.itertuples():
+            logger.debug(f'row={row}')
+
+            try:
+                name = row.name.strip()
+                logger.debug(f'ra={row.ra}, ra type={type(row.ra)}, dec={row.dec}, dec type={type(row.dec)}')
+                if radec_unit.upper() == 'DEG':
+                    hours, minutes, seconds = radec.degToHms(row.ra)
+                    ra =  radec.raHmsToString(hours, minutes, seconds, format='%02d%02d%06.3f')
+                    dec = radec.decDegToString(float(row.dec))
+                    logger.debug(f'radec in Degree.  ra={ra}, dec={dec}')
+                else: # radec_unit is HOUR
+                    if isinstance(row.ra, float):
+                        ra = ra_float_to_string(row.ra, logger)
+                    else:
+                        ra = row.ra.strip()
+                    if isinstance(row.dec, float):
+                        dec = dec_float_to_string(row.dec, logger)
+                    else:
+                        dec = row.dec.strip()
+
+                logger.debug(f'name={name}, ra={ra}, dec={dec}, equinox={row.equinox}')
+                res = _validate_target(name, ra, dec, row.equinox, logger)
+                targets.append(res)
+            except Exception as e:
+                logger.error(f'Error: reading csv file(s). {e}')
+                targets.append(Bunch.Bunch(name=name, ra=row.ra, dec=row.dec, equinox=row.equinox, err=e))
+
+    logger.debug(f'targets={targets}')
+    return targets
+
 def ope(opes, include_dir, logger):
 
     targets = []
 
-    for ope in opes:
-        try:
+    try:
+        for ope in opes:
             with open(ope, "r") as in_f:
                 buf = in_f.read()
-        except Exception as e:
-            logger.error(f'Error: opening an ope file. {e}')
-        else:
-            d = get_vars_ope(buf, [include_dir,])
+                d = get_vars_ope(buf, [include_dir,])
+                target = d.varDict
 
-            for name, line in d.items():
-                coords = get_coords(line)
-                logger.debug(f'ope target name={name}, coords={coords}')
-                if coords is not None:
-                    ra = ra_format(coords[0])
-                    dec = dec_format(coords[1])
-                    equinox = equinox_format(coords[2])
-                    res = _validate_target(name, ra, dec, equinox, logger)
-                    targets.append(res)
-        in_f.close()
+                for name, line in target.items():
+                    logger.debug(f'name={name}, line={line}, linetype={type(line)}')
+                    coords = get_coords2(line)
+                    logger.debug(f'ope target name={name}, coords={coords}, type={type(coords)}')
+                    if coords is not None:
+                        logger.debug(f'ra={coords.ra}, dec={coords.dec}, equinox={coords.equinox}')
+                        res = _validate_target(name, coords.ra, coords.dec, coords.equinox, logger)
+                        targets.append(res)
+    except Exception as e:
+        logger.error(f'Error: opening an ope file. {e}')
+        raise TargetError(f'open/read ope file. ope={ope}, {e}')
+
     logger.debug(f'ope targets={targets}')
     return targets
 
@@ -232,18 +334,6 @@ def site(mysite):
     site_dict = {"subaru": subaru}
     return site_dict.get(mysite)
 
-
-def format_error(targets, logger):
-
-    errors = []
-
-    for t in targets:
-        if t.err:
-            logger.debug(f'error. {t.err}')
-            errors.append(t.err)
-
-    return errors
-
 def populate_interactive_target(target_list, mysite, mydate, logger):
 
     logger.debug('poplulate interactive target...')
@@ -264,9 +354,12 @@ def populate_interactive_target(target_list, mysite, mydate, logger):
 
     plot = TargetPlot(logger, **fig_args)
 
+    errors = []
     for t in target_list:
         if not t.err:
             targets.append(StaticTarget(name=t.name, ra=t.ra, dec=t.dec, equinox=t.equinox))
+        else:
+            errors.append(f'name={t.name}, ra={t.ra}, dec={t.dec}, equinox={t.equinox}. err={t.err}')
 
     target_data = []
     for tgt in targets:
@@ -277,10 +370,10 @@ def populate_interactive_target(target_list, mysite, mydate, logger):
         plot.plot_target(mysite, target_data)
     except Exception as e:
         logger.error(f'error: ploting targets. {e}')
-        raise TargetError(f"Error: ploting targets. {e}")
+        raise TargetError(f"ploting targets. {e}")
 
     else:
-        return plot.fig
+        return (plot.fig, errors)
 
 
 def populate_interactive_laser(target, collision_time, mysite, mydate, logger):

@@ -50,6 +50,29 @@
 </dl>
 
 
+<h2>Csv</h2> 
+<dl>
+  <dt>Upload csv file(s) </dt>
+  <dd>- You can upload csv with/out header file(s).  Checkbox for header</dd>
+  <dd>- Csv with header,  header keywords are "name", "ra", "dec", and "equinox" in any order. lowercae/mixed-case/upercase are acceptable.</dd>
+  <dd>- Csv without header,  "name", "ra", "dec", and "equinox" have to be in order.</dd>
+  <dd>- Ra/Dec format: hhmmss.s*/hh:mm:ss.s*, +-dd:mm:ss.s*/ddmmss.s*  or degree. Checkbox for either hours or degree</dd>
+</dl>
+
+<pre>
+  csv with header.  ra/dec in hours e.g.
+  ra, Dec, equinox, NAME
+  000000.00, +000000.0, 2000.0, HOURS
+  00:00:00.00, +00:00:00.0, 2000.0, HOURS 
+
+  csv with header.  ra/dec in deg e.g.
+  ra, Dec, equinox, NAME
+  0.00, 0.0, 2000.0, DEG
+  
+  csv without header. e.g.
+  BBBB, 000000.00, +000000.0, 2000.0
+</pre>  
+
 
 <h2>Interactive Methods</h2> 
 <dl>
@@ -64,8 +87,6 @@
   <dd>- Undo Tool <img src="{{ url_for('static', filename="img/Reset.png") }}" width="15" height="15">:  Restore previous state of the plot.</dd>
   <dd>- Save Tool <img src="{{ url_for('static', filename="img/Save.png") }}" width="15" height="15">: Save a PNG image of the plot</dd>
 </dl>
-
-
 
 <br>
 

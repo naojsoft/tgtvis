@@ -1,0 +1,40 @@
+    <form  class="entry form-inline" action="Csv" method="POST" id="csv" enctype="multipart/form-data">
+
+
+    <div class="row clearfix">
+    <div class="col-md-9">
+        <label for="site">Site</label><br>
+
+        <select name="site" class="form-control">
+            <option value="subaru">Mauna Kea</option>
+        </select>
+
+        <div class="input-group date">
+            <input type="text" class="form-control" id="sitedate_csv" name="date" required aria-required="true" placeholder="YYYY-MM-DD" pattern="^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$">
+            <div class="input-group-addon">
+            <span class="glyphicon glyphicon-calendar"></span>
+            </div>
+        </div>
+
+    </div>
+    </div>
+    <br>
+
+    <!-- <p><input type=file name="ope[]"  required aria-required="true"  class="btn btn-default" multiple=""> -->
+    <p><input type=file name="csv[]" required aria-required="true" class="filestyle" data-buttonBefore="true" data-buttonName="btn-primary" data-placeholder="csv file(s)"  multiple="">     
+     <br><br>
+     <label class="checkbox-inline"><input type="checkbox" name='header' id="csv" value="1">has Header?</label>
+     <br>
+    <label class="radio-inline">
+      <input type="radio" name="radec" value='hour' checked>Ra/Dec in hours
+    </label>
+    <label class="radio-inline">
+      <input type="radio" name="radec" value='deg'>Ra/Dec in Degree
+    </label>
+     
+     <!-- <label class="checkbox-inline"><input type="checkbox" name='deg' id="csv" value="1">Are Ra/Dec in degree?</label> -->
+     <br><br>   
+     <input type=submit value="Plot" form="csv" class="btn btn-success" id="plot">
+        
+    </form>
+

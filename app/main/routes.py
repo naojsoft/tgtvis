@@ -29,7 +29,6 @@ from bokeh.embed import file_html
 from ginga.misc import Bunch
 
 def delete_files(files):
-
     for f in files:
         os.remove(f)
 
@@ -59,7 +58,6 @@ def Laser():
         return redirect(url_for('main.index'))
 
     file = request.files.get("laser")
-    #mydate = request.form.get("date")
     mysite = helper.site(request.form.get('site'))
 
     app.logger.debug(f'laser file={file}')
@@ -99,11 +97,67 @@ def Laser():
 
             # render template
     html = render_template('laser_visibility.html', js_resources=js_resources, css_resources=css_resources, targets=plots)
-
-    #return html
     html = html.encode('utf-8')
     return html
-    #return encode_utf8(html)
+
+
+@main.route('/Csv', methods=['POST'])
+def Csv():
+
+    if  not request.method in ['POST']:
+        return redirect(url_for('main.index'))
+
+    files = request.files.getlist("csv[]")
+    header = request.form.get("header")
+    radec = request.form.get("radec")
+    app.logger.debug(f'radec={radec}, files={files}, header={header}')
+
+    csvs = []
+    del_files = []
+    upload_dir = current_app.config['APP_UPLOAD']
+
+    for f in files:
+        filename = secure_filename(f.filename)
+        app.logger.debug(f'secure filename={filename}')
+
+        csv = os.path.join(upload_dir, filename)
+        app.logger.debug(f'secure csv={csv}')
+        f.save(csv)
+        del_files.append(csv)
+        csvs.append(csv)
+
+    app.logger.debug(f'csvs={csvs}')
+
+    mysite = helper.site(request.form.get('site'))
+    mydate = request.form.get('date')
+
+    try:
+        targets = helper.read_csv(csvs, header, radec, app.logger)
+        delete_files(del_files)
+        fig, errors = helper.populate_interactive_target(target_list=targets, mysite=mysite, mydate=mydate, logger=app.logger)
+    except Exception as e:
+        app.logger.error(f'Error: failed to populate csv plot. {e}')
+        err_msg = f"Plot Error: {e}"
+        #errors.append(err_msg)
+        return render_template('target_visibility.html', errors=[err_msg])
+    else:
+        # Grab the static resources
+        js_resources = INLINE.render_js()
+        css_resources = INLINE.render_css()
+
+        # render template
+        script, div = components(fig)
+        html = render_template(
+            'target_visibility.html',
+            plot_script=script,
+            plot_div=div,
+            js_resources=js_resources,
+            css_resources=css_resources,
+            errors=errors)
+
+        html = html.encode('utf-8')
+        return html
+
 
 @main.route('/Ope', methods=['POST'])
 def Ope():
@@ -131,16 +185,12 @@ def Ope():
 
     try:
         targets = helper.ope(opes, upload_dir, app.logger)
-        #errors = helper.format_error(targets, app.logger)
     except Exception as e:
         app.logger.error(f'Error: invalid ope file. {e}')
         err_msg = f"Plot Error: {e}"
         #errors.append(err_msg)
         delete_files(del_files)
         return render_template('target_visibility.html', errors=[err_msg])
-
-    #filepath = tempfile.NamedTemporaryFile().name
-    #filepath = os.path.join(current_app.config['APP_UPLOAD'], filename)
 
     mysite = helper.site(request.form.get('site'))
     mydate = request.form.get('date')
@@ -152,15 +202,12 @@ def Ope():
     delete_files(del_files)
 
     try:
-        #fig = helper.populate_target2(targets, mysite, mydate, filepath, app.logger)
-        fig = helper.populate_interactive_target(target_list=targets, mysite=mysite, mydate=mydate, logger=app.logger)
+        fig, errors = helper.populate_interactive_target(target_list=targets, mysite=mysite, mydate=mydate, logger=app.logger)
     except Exception as e:
         app.logger.error(f'Error: failed to populate ope plot. {e}')
         err_msg = "Plot Error: {}".format(e)
-        #errors.append(err_msg)
         return render_template('target_visibility.html', errors=[err_msg])
     else:
-
         # Grab the static resources
         js_resources = INLINE.render_js()
         css_resources = INLINE.render_css()
@@ -173,37 +220,30 @@ def Ope():
             plot_div=div,
             js_resources=js_resources,
             css_resources=css_resources,
-            errors=None)
+            errors=errors)
 
         html = html.encode('utf-8')
         return html
-        #return encode_utf8(html)
+
 
 @main.route('/Text', methods=['POST'])
 def Text():
 
     if  not request.method in ['POST']:
         return redirect(url_for('main.index'))
-        #return render_template('menu.html')
-
-    #print("Form action={}".format(request.form['action']))
-    #print("Form={}".format(request.form))
 
     equinox = request.form.get('equinox')
     radec = request.form.get('radec')
     targets = helper.text_dict(radec=radec, equinox=equinox, logger=app.logger)
-    app.logger.debug('Text targets. {}'.format(targets))
-    errors = helper.format_error(targets, app.logger)
-
     mysite = helper.site(request.form.get('site'))
     mydate = request.form.get('date')
 
     try:
-        fig = helper.populate_interactive_target(target_list=targets, mysite=mysite, mydate=mydate, logger=app.logger)
+        fig, errors  = helper.populate_interactive_target(target_list=targets, mysite=mysite, mydate=mydate, logger=app.logger)
     except Exception as e:
         app.logger.error(f'Error: failed to populate text plot. {e}')
         err_msg = f"Plot Error: {e}"
-        errors.append(err_msg)
+        errors = [err_msg]
         return render_template('target_visibility.html', errors=errors)
     else:
         # Grab the static resources
@@ -213,8 +253,6 @@ def Text():
         # render template
         script, div = components(fig)
 
-        #print('div={}'.format(div))
-
         html = render_template(
             'target_visibility.html',
             plot_script=script,
@@ -223,7 +261,5 @@ def Text():
             css_resources=css_resources,
             errors=errors)
 
-        #return html
         html = html.encode('utf-8')
         return html
-        #return encode_utf8(html)

@@ -11,6 +11,12 @@ $(document).ready(function () {
 });
 
 $(document).ready(function () {
+    $('#sitedate_csv').datepicker({
+        format: "yyyy-mm-dd"
+    });  
+});
+
+$(document).ready(function () {
     $('#laser').datepicker({
         format: "yyyy-mm-dd"
 	
