@@ -25,7 +25,7 @@ try:
     from .base_plot import BasePlot
 except:
     from base_plot import BasePlot
-    
+
 from ginga.misc import Bunch
 import matplotlib.dates as mpl_dt
 
@@ -35,40 +35,45 @@ class TargetPlot(BasePlot):
     def __init__(self, logger=None, **args):
         super(TargetPlot, self).__init__(logger, **args)
 
-
     def plot_target(self, site, tgt_data):
 
+        self.logger.debug(f'plotting targets...')
         timezone = site.tz_local
         self.plot_base(site, tgt_data)
 
         lt_data = list(map(lambda info: info.ut.astimezone(timezone), tgt_data[0].history))
-        #alt_data = np.array(list(map(lambda info: info.alt_deg, tgt_data[0].history)))
 
+        self.logger.debug(f'target trajectory...')
         self.target_trajectory(lt_data, tgt_data)
+
+        self.logger.debug(f'calling moon trajectory...')
         self.moon_trajectory(tgt_data, lt_data, site)
 
         self.fig.legend.click_policy = "hide"
 
-        #leg = self.fig.legend.pop()
-        #leg.title = 'Target,RA,DEC, Moon dist'
-        
+        self.logger.debug(f'plot_target done...')
+
     def moon_trajectory(self, tgt_data, lt_data, site):
+
+        self.logger.debug(f'moon_trajectory...')
         # Plot moon trajectory and illumination
         moon_data = np.array(list(map(lambda info: info.moon_alt, tgt_data[0].history)))
         illum_time = lt_data[moon_data.argmax()]
         moon_illum = site.moon_phase(date=illum_time)
         moon_color = "orange" # '#666666'
         moon_name = "Moon(Illum {:.2f} %)".format(moon_illum*100)
+        self.logger.debug(f'moon name={moon_name}')
         moon = self.fig.line(lt_data, moon_data, line_color=moon_color, line_alpha=0.5, line_dash="dashed",  line_width=3)
         moon_legend = LegendItem(label=moon_name, renderers=[moon])
+        self.logger.debug(f'moon legend={moon_legend}')
 
         leg = self.fig.legend.pop()
-        #print('popped leg={}'.format(leg.items))
-        #leg.items.append(moon_legend)
         leg.items.insert(0, moon_legend)
+        self.logger.debug(f'moon_trajectory done...')
 
     def moon_distance(self, info, lt_data, alt_data, color):
-       
+
+        self.logger.debug(f'moon_distance...')
         moon_sep = np.array(list(map(lambda info: info.moon_sep, info.history)))
         min_interval = 12  # hour/5min
         mt = lt_data[0:-1:min_interval]
@@ -76,60 +81,60 @@ class TargetPlot(BasePlot):
         alt_interval = alt_data[0:-1:min_interval]
 
         moon = []
-        
+        xs = []
+        ys = []
+        texts = []
         for x, y, v in zip(mt, alt_interval, moon_sep):
             if y < 0:
                 continue
 
-            deg = self.fig.circle([x,], [y,], color=color, size=7, fill_alpha=0.8)
-            moon.append(deg)
-            txt = self.fig.text([x,], [y,], text=["%.1f" %v, ], text_font_size="9pt", text_align="center", text_baseline="bottom")
-            moon.append(txt)
+            xs.append(x)
+            ys.append(y)
+            texts.append(f'{v:.1f}')
+
+        deg = self.fig.scatter(xs, ys, color=color, size=10.0,  fill_alpha=0.8)
+        moon.append(deg)
+        txt = self.fig.text(xs, ys, text=texts, text_font_size="9pt", text_align="center", text_baseline="bottom")
+        moon.append(txt)
 
         return moon
-        
-        
+
     def target_trajectory(self, lt_data, tgt_data):
 
         legend_items = []
 
-        print('TARGET DATA type={}'.format(type(tgt_data)))
-        
+        self.logger.debug(f'TARGET DATA type={type(tgt_data)}')
+
         #for i, info in enumerate(tgt_data):
-        for info in sorted(tgt_data, key=lambda k: k.target.name, reverse=False):    
+        for info in sorted(tgt_data, key=lambda k: k.target.name, reverse=False):
             alt_data = np.array(list(map(lambda info: info.alt_deg, info.history)))
             alt_min = np.argmin(alt_data)
             color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
-            print('color={}'.format(color))
+            self.logger.debug(f'color={color}')
             target = self.fig.line(lt_data, alt_data, line_color=color, line_width=3)
 
-            #x = mpl_dt.date2num(lt_data[alt_data.argmax()])
             x = lt_data[alt_data.argmax()]
             y = alt_data.max()
             targetname = info.target.name
-            print('x={}, y={}, targetname={}'.format(x, y, targetname))
-            target_label = self.fig.text([x,], [y,], text=[targetname,], text_color=color, text_alpha=1.0, text_align='center', text_baseline='bottom')
-            self.fig.add_layout(target_label)
 
+            self.logger.debug(f'x={x}, y={y}, targetname={targetname}')
+            target_label = self.fig.text([x,], [y,], text=[targetname,], text_color=color, text_alpha=1.0, text_align='center', text_baseline ='bottom')
+
+            self.logger.debug(f'callling moon distance...')
             moon = self.moon_distance(info, lt_data, alt_data, color)
             moon.insert(0, target_label)
             moon.insert(0, target)
-            
-            legend_items.append(LegendItem(label="{0} {1} {2}".format(targetname, info.target.ra, info.target.dec), renderers=moon))
 
-        #legend_newline = LegendItem(label="", renderers=[])
-        #legend_sep = LegendItem(label="-"*59, renderers=[])
-        
-        legend_title = LegendItem(label="Name,Ra,Dec,  Moon distance in deg(circle)", renderers=[])
+            legend_items.append(LegendItem(label=f"{targetname} {info.target.ra} {info.target.dec}", renderers=moon))
 
-        #legend_items.insert(0, legend_sep)
+        legend_title = LegendItem(label="Name,Ra and Dec.  Moon distance in deg(circle)", renderers=[])
         legend_items.insert(0, legend_title)
-        #legend_items.insert(0, legend_newline)
 
         target_legends = Legend(items=legend_items, location="top_right", background_fill_color='white', background_fill_alpha=0.7)
         self.fig.add_layout(target_legends, 'right')
 
-        
+        self.logger.debug(f'target_trajectory done...')
+
 if __name__ == '__main__':
     import sys
     import logging
@@ -137,19 +142,19 @@ if __name__ == '__main__':
     from qplan.util.site import get_site
 
     logger = logging.getLogger()
-    
+
     TOOLS = "pan,wheel_zoom,box_zoom,reset,save"
     toolbar_location = 'above'
 
     site = get_site('subaru')
     timezone = site.tz_local
     date = "2019-06-28"
-    
+
     title = "Visibility for the night of {}".format(date)
 
     # note: output_backend: webgl is to optimize drawings
-    fig_args = {"x_axis_type": "datetime",  "title": title, "tools": TOOLS, "toolbar_location": toolbar_location, "plot_height": 850, "plot_width": 1200,} #  "output_backend": "webgl"}
-    
+    fig_args = {"x_axis_type": "datetime",  "title": title, "tools": TOOLS, "toolbar_location": toolbar_location, "height": 850, "width": 1200,} #  "output_backend": "webgl"}
+
     plot = TargetPlot(logger, **fig_args)
 
     site = get_site('subaru')
@@ -209,9 +214,7 @@ if __name__ == '__main__':
     ## info = Bunch.Bunch(site=site, num_tgts=num_tgts,
     ##                    target_data=target_data)
 
-    
+
     plot.plot_target(site, target_data)
     #show(row(plot.fig, column(plot.target_legend)))
     show(plot.fig)
-
-     

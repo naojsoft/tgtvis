@@ -34,17 +34,15 @@ class LaserPlot(BasePlot):
         super(LaserPlot, self).__init__(logger, **args)
 
         self.toggles = []
-        
+
     def plot_laser(self, site, tgt_data,  collision_time):
 
         self.logger.debug('plot_laser...')
         timezone = site.tz_local
-        #self._plot_altitude(self.fig, site, tgt_data, tz)
-        #ax = self.get_ax()
-        self.collision(site, collision_time)
 
         self.logger.debug('plot_base...')
         self.plot_base(site, tgt_data)
+        self.collision(site, collision_time)
 
         #info = tgt_data[0]
         lt_data = list(map(lambda info: info.ut.astimezone(timezone), tgt_data[0].history))
@@ -54,15 +52,12 @@ class LaserPlot(BasePlot):
         self.target_trajectory(lt_data, alt_data, tgt_data)
         self.moon_trajectory(tgt_data, lt_data, site)
         #self.moon_distance(tgt_data, lt_data, alt_data)
-        
+
         self.fig.legend.click_policy = "hide"
-
         self.logger.debug('plot_laser done...')
-        
-    def moon_distance(self,  tgt_data, lt_data, alt_data, moon_deg_color):
 
-        #print('moon distance....')
-        
+    def moon_distance(self, tgt_data, lt_data, alt_data, moon_deg_color):
+
         moon_sep = np.array(list(map(lambda info: info.moon_sep, tgt_data[0].history)))
         min_interval = 12  # hour/5min
         mt = lt_data[0:-1:min_interval]
@@ -70,18 +65,24 @@ class LaserPlot(BasePlot):
         alt_interval = alt_data[0:-1:min_interval]
 
         moon = []
-        
+        xs = []
+        ys = []
+        names = []
+
         for x, y, v in zip(mt, alt_interval, moon_sep):
             if y < 0:
                 continue
+            xs.append(x)
+            ys.append(y)
+            names.append(f"{v:.1f}")
 
-            deg = self.fig.circle([x,], [y,], color=moon_deg_color, size=7, fill_alpha=0.5)
-            moon.append(deg)
-            txt = self.fig.text([x,], [y,], text=["%.1f" %v, ], text_font_size="11pt", text_align="center", text_baseline="bottom")
-            moon.append(txt)
+        deg = self.fig.scatter(xs, ys, color=moon_deg_color, size=10, fill_alpha=0.5)
+        moon.append(deg)
+        txt = self.fig.text(xs, ys, text=names, text_font_size="11pt", text_align="center", text_baseline="bottom")
+        moon.append(txt)
 
         return moon
-        
+
     def moon_trajectory(self, tgt_data, lt_data, site):
         # Plot moon trajectory and illumination
         moon_data = np.array(list(map(lambda info: info.moon_alt, tgt_data[0].history)))
@@ -96,29 +97,30 @@ class LaserPlot(BasePlot):
         #print('popped leg={}'.format(leg.items))
         leg.items.append(moon_legend)
         #leg.items.insert(0, moon_legend)
-        
+
     def target_trajectory(self, lt_data, alt_data, tgt_data):
-        
+
         target_color = 'red'
         target = self.fig.line(lt_data, alt_data, line_color=target_color, line_width=3)
         moon = self.moon_distance(tgt_data=tgt_data, lt_data=lt_data, alt_data=alt_data, moon_deg_color=target_color)
         #print('moon={}'.format(moon))
-        
+
         #moon.insert(0, target)
         moon.append(target)
         #moon.insert(0, legend_title)
 
         target_legend = Legend(items=[LegendItem(label="{} {} {}, Moon dist(deg)".format(tgt_data[0].target.name, tgt_data[0].target.ra, tgt_data[0].target.dec), renderers=moon)], location=('top_right'), background_fill_color='white', background_fill_alpha=0.5)
-        
+
         self.fig.add_layout(target_legend)
-        
+
     def collision(self, site, collision_time):
 
+        self.logger.debug('drawing collision...')
         code = '''object.visible = toggle.active'''
         #toggles = []
-        
+
         for s, e in collision_time:
-            print('start={}, end={}, tz={}'.format(s, e, site.timezone))
+            self.logger.debug(f'start={s}, end={e}, tz={site.timezone}')
             s = pytz.timezone("US/Hawaii").localize(s)
             e = pytz.timezone("US/Hawaii").localize(e)
 
@@ -131,12 +133,12 @@ class LaserPlot(BasePlot):
             self.toggles.append(toggle)
             #print('making laser annotation...')
             laser_collision = BoxAnnotation(left=s, right=e, bottom=self.y_min, top=self.y_max, fill_alpha=0.2, fill_color='magenta', line_color='magenta', line_alpha=0.2)
-            #print('adding layout...') 
+            #print('adding layout...')
             self.fig.add_layout(laser_collision)
             callback.args = {'toggle': toggle, 'object': laser_collision}
-            
-        #return toggles 
-            
+
+        #return toggles
+
 if __name__ == '__main__':
     import sys
     import logging
@@ -145,19 +147,19 @@ if __name__ == '__main__':
 
     logger = logging.getLogger()
     logger.setLevel('DEBUG')
-    
+
     TOOLS = "pan,wheel_zoom,box_zoom,reset,save"
     toolbar_location = 'above'
 
     site = get_site('subaru')
     timezone = site.tz_local
     date = "2019-06-28"
-    
+
     title = "Visibility for the night of {}".format(date)
 
     # note: output_backend: webgl is to optimize drawings
-    fig_args = {"x_axis_type": "datetime",  "title": title, "tools": TOOLS, "toolbar_location": toolbar_location, "plot_height": 850, "plot_width": 900,} #  "output_backend": "webgl"}
-    
+    fig_args = {"x_axis_type": "datetime",  "title": title, "tools": TOOLS, "toolbar_location": toolbar_location, "height": 850, "width": 900,} #  "output_backend": "webgl"}
+
     plot = LaserPlot(logger, **fig_args)
 
     site = get_site('subaru')
@@ -220,7 +222,7 @@ if __name__ == '__main__':
     target = {'SgrAS': [(datetime(2019, 6, 28, 19, 13), datetime(2019, 6, 28, 21, 45, 2)), (datetime(2019, 6, 28, 21, 45, 21), datetime(2019, 6, 28, 21, 52, 16)), (datetime(2019, 6, 28, 21, 52, 32), datetime(2019, 6, 28, 22, 1, 19)), (datetime(2019, 6, 28, 22, 1, 34), datetime(2019, 6, 28, 22, 39, 28)), (datetime(2019, 6, 28, 22, 40, 27), datetime(2019, 6, 28, 23, 14, 18)), (datetime(2019, 6, 28, 23, 14, 36), datetime(2019, 6, 28, 23, 17, 6)), (datetime(2019, 6, 28, 23, 17, 32), datetime(2019, 6, 28, 23, 18, 31)), (datetime(2019, 6, 28, 23, 18, 44), datetime(2019, 6, 28, 23, 19, 29)), (datetime(2019, 6, 28, 23, 34, 32), datetime(2019, 6, 28, 23, 38, 6)), (datetime(2019, 6, 28, 23, 38, 24), datetime(2019, 6, 28, 23, 53, 27)), (datetime(2019, 6, 28, 23, 53, 31), datetime(2019, 6, 29, 0, 6, 4)), (datetime(2019, 6, 29, 0, 8, 9), datetime(2019, 6, 29, 0, 40, 37)), (datetime(2019, 6, 29, 1, 18, 57), datetime(2019, 6, 29, 1, 35, 28))]}
 
     collision_time = target['SgrAS']
-    
+
     plot.plot_laser(site, target_data, collision_time)
     show(row(plot.fig, column(plot.toggles)))
     #show(plot.fig)

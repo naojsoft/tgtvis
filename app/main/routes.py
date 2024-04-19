@@ -22,7 +22,10 @@ import tempfile
 from bokeh.embed import components
 #from bokeh.util.string import encode_utf8
 from bokeh.resources import INLINE
+#from bokeh.resources  import settings
+#settings.resources = 'inline'
 
+from bokeh.plotting import figure
 from bokeh.resources import CDN
 from bokeh.embed import file_html
 
@@ -60,7 +63,7 @@ def Laser():
     file = request.files.get("laser")
     mysite = helper.site(request.form.get('site'))
 
-    app.logger.debug(f'laser file={file}')
+    app.logger.debug(f'laser file={file.filename}')
 
     try:
         data = file.readlines()
@@ -69,8 +72,9 @@ def Laser():
         mydate, targets = helper.get_laser_info(data, app.logger)
     except Exception as e:
         app.logger.error(f'Error: reading laser file. {e}')
-        err = f'Reading laser file. {e}'
+        err = f'Reading laser file.  filename={file.filename}.  {e}'
         errors.append(err)
+        return render_template('laser_visibility.html', js_resources=None, css_resources=None, targets=None, errors=errors)
 
     plots = []
 
@@ -95,7 +99,7 @@ def Laser():
             script, div = components(fig)
             plots.append(Bunch.Bunch(plot_script=script, plot_div=div, name=target.name, ra=target.ra, dec=target.dec))
 
-            # render template
+    # render template
     html = render_template('laser_visibility.html', js_resources=js_resources, css_resources=css_resources, targets=plots)
     html = html.encode('utf-8')
     return html
@@ -134,29 +138,35 @@ def Csv():
     try:
         targets = helper.read_csv(csvs, header, radec, app.logger)
         delete_files(del_files)
-        fig, errors = helper.populate_interactive_target(target_list=targets, mysite=mysite, mydate=mydate, logger=app.logger)
     except Exception as e:
         app.logger.error(f'Error: failed to populate csv plot. {e}')
-        err_msg = f"Plot Error: {e}"
+        err_msg = f"Reading csv file. files={csvs}.  {e}"
         #errors.append(err_msg)
         return render_template('target_visibility.html', errors=[err_msg])
-    else:
-        # Grab the static resources
-        js_resources = INLINE.render_js()
-        css_resources = INLINE.render_css()
 
-        # render template
-        script, div = components(fig)
-        html = render_template(
-            'target_visibility.html',
-            plot_script=script,
-            plot_div=div,
-            js_resources=js_resources,
-            css_resources=css_resources,
-            errors=errors)
+    try:
+        fig, errors = helper.populate_interactive_target(target_list=targets, mysite=mysite, mydate=mydate, logger=app.logger)
+    except Exception as e:
+        app.logger.error(f'Error: failed to plot csv. {e}')
+        err_msg = f"Plot Error: {e}"
+        return render_template('target_visibility.html', errors=[err_msg])
 
-        html = html.encode('utf-8')
-        return html
+    # Grab the static resources
+    js_resources = INLINE.render_js()
+    css_resources = INLINE.render_css()
+
+    # render template
+    script, div = components(fig)
+    html = render_template(
+        'target_visibility.html',
+        plot_script=script,
+        plot_div=div,
+        js_resources=js_resources,
+        css_resources=css_resources,
+        errors=errors)
+
+    html = html.encode('utf-8')
+    return html
 
 
 @main.route('/Ope', methods=['POST'])
@@ -214,6 +224,7 @@ def Ope():
 
         # render template
         script, div = components(fig)
+
         html = render_template(
             'target_visibility.html',
             plot_script=script,
@@ -250,8 +261,16 @@ def Text():
         js_resources = INLINE.render_js()
         css_resources = INLINE.render_css()
 
+        #resources = INLINE.render()  # CDN.render()
+
         # render template
         script, div = components(fig)
+        #app.logger.debug(f'script={script}, div={div}')
+
+        plot = figure()
+        plot.scatter([1,2], [3,4])
+        #script, div = components(plot)
+
 
         html = render_template(
             'target_visibility.html',
@@ -261,5 +280,7 @@ def Text():
             css_resources=css_resources,
             errors=errors)
 
+
         html = html.encode('utf-8')
+        #app.logger.debug(f'html={html}')
         return html

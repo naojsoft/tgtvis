@@ -1,17 +1,20 @@
 {% extends "base.html" %}
 
+
 {% block title %}Target Visibility{% endblock %}
+
 
 {% block page_content %}
 
-    <div class="container-fluid">
+    <div class="container">
 
-    <h1>Visibility</h1>
+    <h1 class='display-4'>Visibility</h1>
     <br>
 
     {% if errors %} 
-        <div class="alert alert-danger">
-        <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+        <div class="alert alert-danger alert-dismissible ">
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <!-- <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a> -->
         <strong>ERROR!</strong>
         {% for e in errors %}
             <li>{{ e }}</li>
@@ -20,13 +23,15 @@
 
     {% endif %}
 
-    {% if plot_script %} 	
+
+    {% if plot_script %} 
         {{ js_resources|indent(4)|safe }}
         {{ css_resources|indent(4)|safe }}
         {{ plot_script|indent(4)|safe }}
         {{ plot_div|indent(4)|safe }}
-    {% endif %}     
+    {% endif %} 
 
+  
     </div>
 
 {% endblock %}

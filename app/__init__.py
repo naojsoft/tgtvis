@@ -3,7 +3,7 @@ import os
 import logging, logging.handlers
 
 from flask import Flask
-from flask_bootstrap import Bootstrap
+from flask_bootstrap import Bootstrap5 as Bootstrap
 
 from ginga.misc import log
 
@@ -17,10 +17,10 @@ except ModuleNotFoundError as e:
 
 bootstrap = Bootstrap()
 
+
 def create_app(config_name, logger):
 
     """Create an application instance."""
-
     app = Flask(__name__)
 
     # import configuration

@@ -1,47 +1,52 @@
-    <form class="entry form-inline" action="Text" method="POST" id="textP"> 
-
-    <div class="row clearfix">
-        <div class="col-md-9">
+<form class="entry form-inline" action="Text" method="POST" id="textP"> 
    
-        <label for="site">Site: </label>
-
-        <select name="site" class="form-control">
-        <option value="subaru">Mauna Kea</option>
-        </select>
-
-        <div class="input-group date">
-            <input type="text" size="11" class="form-control" id="sitedate" name="date" required aria-required="true" placeholder="YYYY-MM-DD" pattern="^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$">
-            <div class="input-group-addon">
-            <span class="glyphicon glyphicon-calendar"></span>
-            </div>
-        </div>
-
-        <br>
-        <label for="equinox">Equinox: </label>
-        <select name="equinox" class="form-control">
-        <option selected="selected" >2000.0</option>
-        <option>1950.0</option>
-        <option>1900.0</option>    
-        </select>
-
-        </div>
-
+    <div class="row">
+    <div class="col-sm-3">
+    <label for="site" class='h5'>Site:</label>
+    <div class="input-group">
+    <select name="site" id='site' class="form-select form-control">
+    <option value="subaru">Mauna Kea</option>
+    </select>
     </div>
-
-
-    <div class="row clearfix"> 
-        <div class="col-md-9 table-responsive">
-
-        <div>
-        <br>
-        <label for="title">Name RA DEC</label>
-        <br>
-        <textarea name="radec" rows="10" cols="50" placeholder="Name(no space) 123456.789  +-123456.78                                             Name(no space) 12:34:06.789  +-12:04:56.78                                               ..." class="form-control"  required></textarea>
-        </div>
-        </div>
     </div>
-    </form>
+	  
+    <div class="col-sm-3">
+    <label for="empty" class='h5'>&nbsp;  </label>
+    <div class="input-group date">
+    <input type="date" id='empty' size="11" class="form-control"  name="date" required aria-required="true">
+    <div class="input-group-addon">
+    <span class="glyphicon glyphicon-calendar"></span>
+    </div>
+    </div>
+    </div> 
+    </div>	
 
     <br>
-    <input type="submit" value="Plot" form="textP" class="btn btn-success" id="plot">    <!-- </button> -->
+
+    <div class="row">	
+    <div class="col-sm-3">  
+    <label for="equinox" class='h5'>Equinox:</label>
+    <select name="equinox" id='equinox' class="form-select form-control">
+    <option selected="selected" >2000.0</option>
+    <option>1950.0</option>
+    <option>1900.0</option>    
+    </select>
+    </div>
+    </div>
+
+    <br>
+
+    <div class="row"> 
+    <div class="col-sm-6 table-responsive">
+    <label for="coord" class='h5'>Coords:</label>
+    <textarea name="radec" id='coord' rows="10" cols="50" placeholder="E.g.&#10;Name(no space) 123456.789  +-123456.78&#10;Name(no space) 12:34:06.789  +-12:04:56.78&#10;..." class="form-control"  required></textarea>
+    </div>
+    </div>
+
+    <br>
+    <input type="submit" value="Plot" form="textP" class="btn btn-success" id="plot">  
+
+    
+ </form>
+
 

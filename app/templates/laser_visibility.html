@@ -1,57 +1,52 @@
 {% extends "base.html" %}
 
-{% block title %}Target Visibility{% endblock %}
 
 {% block page_content %}
 
-    <div class="container-fluid">
-  
-    <h1>Laser Safe Time</h1>
+    <style>
+        details > summary {
+        padding: 4px;
+        width: auto;
+        background-color: #ffffff;
+        border: none;
+        box-shadow: 1px 1px 2px #bbbbbb;
+        cursor: pointer;
+        color: #1564B2 ;
+        font-size: 20px;}
+    </style>
+
+    <div class="container">
+      
+    <h1 class='display-4'>Laser Safe Time</h1>
     <br>
 
     {% if errors %} 
-    <div class="alert alert-danger">
-    <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
-    <strong>ERROR!</strong>
-    {% for e in errors %}
-        <li>{{ e }}</li>
-    {% endfor %}
-    </div>
-
+        <div class="alert alert-danger alert-dismissible ">
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <!-- <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a> -->
+        <strong>ERROR!</strong>
+        {% for e in errors %}
+            <li>{{ e }}</li>
+        {% endfor %}
+        </div>
     {% endif %}
-    
 
+    {% if targets %} 
+    
         {{ js_resources|indent(4)|safe }}
         {{ css_resources|indent(4)|safe }}
+    
+        {% for target in targets %}
+            {{ target.plot_script|indent(4)|safe }}
 
-        {% for target in targets %}	
-         {{ target.plot_script|indent(4)|safe }}
-
-        <div class="container-fluid">
-        <div class="panel-group">
-        <div class="panel panel-default">
-
-
-        {% set ID="ID{}".format(loop.index)  %}
-        <div class="panel-heading">
-        <a data-toggle="collapse" href="#{{ ID }}">
-	<h4 class="panel-title, blue-text"><b>{{ target.name }} {{ target.ra }} {{ target.dec }}</b></h4>
-        </a>
-        </div>
-        <div id="{{ ID }}" class="panel-collapse collapse">
-	<div class="panel-body">
-        {{ target.plot_div|indent(4)|safe }} 
-        </div>
-	<div class="panel-footer"></div>
-        </div>
-
-        </div>
-        </div>
-        </div>
-
+            <details>
+            <summary>{{ target.name }} {{ target.ra }} {{ target.dec }}</summary>
+            {{target.plot_div|indent(4)|safe }} 
+            </details>
+	    <br>
         {% endfor %}
-
-
+    {% endif %}	
+	
     </div>
 
 {% endblock %}

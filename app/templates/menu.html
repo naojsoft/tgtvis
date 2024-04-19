@@ -3,39 +3,48 @@
 {% block title %}Targets{% endblock %}
 
 {% block page_content %}
+<br>
 
-<div id="tab" class="container-fluid">	
-    <ul class="nav nav-tabs">
-        <li class="active">
-        <a href="#1" data-toggle="tab">Text</a>
-        </li>
-        <li><a href="#2" data-toggle="tab">Ope</a>
-        </li>
-	<li><a href="#3" data-toggle="tab">Laser</a>
-        </li>
-	<li><a href="#4" data-toggle="tab">Csv</a>
-    </ul>
+<div class="container mt-3">
 
-<div class="tab-content ">
     <div class="page-header">
-      <h1>Target Visibility</h1>
+      <h1 class="display-3">Target Visibility</h1>
       <p>This will produce a plot showing your targets' elevations on the date of your choice.</p>
     </div>
-    <div class="tab-pane active" id="1">
-        {% include "text.html" %}
-    </div>
-    <div class="tab-pane" id="2">
-        {% include "ope.html" %}
-    </div>
-    <div class="tab-pane" id="3">
-        {% include "laser.html" %}
-    </div>
-    <div class="tab-pane" id="4">
-        {% include "csv.html" %}
-    </div>
-</div>
-</div>
+  <br>
+  <!-- Nav tabs -->
+  <ul class="nav nav-tabs" role="tablist">
+    <li class="nav-item">
+      <a class="nav-link active h3"  data-bs-toggle="tab" href="#text">Text</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link h3" data-bs-toggle="tab" href="#ope">Ope</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link h3" data-bs-toggle="tab" href="#laser">Laser</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link h3" data-bs-toggle="tab" href="#csv">Csv</a>
+    </li>
+  </ul>
 
+  <!-- Tab panes -->
+  <div class="tab-content">
+    <div id="text" class="container tab-pane active"><br>
+      {% include "text.html" %}
+    </div>
+    <div id="ope" class="container tab-pane fade"><br>
+      {% include "ope.html" %}
+    </div>
+    <div id="laser" class="container tab-pane fade"><br>
+       {% include "laser.html" %}
+    </div>
+    <div id="csv" class="container tab-pane fade"><br>
+       {% include "csv.html" %}
+    </div>
+    
+  </div>
+</div>
 
 
 {% endblock %}

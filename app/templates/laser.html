@@ -1,21 +1,31 @@
-    <form  class="entry form-inline" action="Laser" method="POST" id="laserC" enctype="multipart/form-data">
+ <form  class="entry form-inline" action="Laser" method="POST" id="laserC" enctype="multipart/form-data">
 
-
-    <div class="row clearfix">
-    <div class="col-md-9">
-        <label for="site">Site</label><br>
-        <select name="site" class="form-control">
-            <option value="subaru">Mauna Kea</option>
-        </select>
+    <div class="row">
+    <div class="col-sm-3">
+    <label for="site" class='h5'>Site:</label>
+    <div class="input-group">
+    <select name="site" id='site' class="form-select form-control">
+    <option value="subaru">Mauna Kea</option>
+    </select>
     </div>
     </div>
+	  
+    </div>	
+
     <br>
 
-    <!-- <p><input type=file name="laser"  required aria-required="true"  class="btn btn-default" multiple=""> -->
-    <p><input type=file name="laser" required aria-required="true" class="filestyle" data-buttonBefore="true" data-buttonName="btn-primary" data-placeholder="laser collision file">     
+    <div class="row">
+    <div class="col-sm-3">  
+    <label for="laserfile" class="form-label h5">Laser File:</label>
+    <input class="form-control" type="file" id="laserfile" name="laser"  required>
+    </div>
+    </div>
+
+   <!-- 
+    <p><input type=file name="laser" required aria-required="true" class="filestyle" data-buttonBefore="true" data-buttonName="btn-primary" data-placeholder="laser collision file">     -->
 
      <br><br>   
      <input type=submit value="Plot" form="laserC" class="btn btn-success" id="plot">
         
-    </form>
+</form>
 

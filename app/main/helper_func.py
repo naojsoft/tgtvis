@@ -6,6 +6,8 @@ import pandas as pd
 
 from bokeh.layouts import layout, row, column
 
+from bokeh.models.layouts import Row, Column
+
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 from astropy.coordinates import SkyCoord
@@ -348,9 +350,9 @@ def populate_interactive_target(target_list, mysite, mydate, logger):
     TOOLS = "pan,wheel_zoom,box_zoom,reset,save"
     toolbar_location = 'above'
     plot_height = 930
-    plot_width = 1200
+    plot_width = 1280
     # note: output_backend: webgl is to optimize drawings, but can't draw dotted line
-    fig_args = {"x_axis_type": "datetime",  "title": title, "tools": TOOLS, "toolbar_location": toolbar_location, "plot_height": plot_height, "plot_width": plot_width,} #  "output_backend": "webgl"}
+    fig_args = {"x_axis_type": "datetime",  "title": title, "tools": TOOLS, "toolbar_location": toolbar_location, "height": plot_height, "width": plot_width,} #  "output_backend": "webgl"}
 
     plot = TargetPlot(logger, **fig_args)
 
@@ -369,11 +371,11 @@ def populate_interactive_target(target_list, mysite, mydate, logger):
     try:
         plot.plot_target(mysite, target_data)
     except Exception as e:
-        logger.error(f'error: ploting targets. {e}')
-        raise TargetError(f"ploting targets. {e}")
+        logger.error(f'error: plotting targets. {e}')
+        errors.append(f"plotting target(s). {e}")
+        #raise TargetError(f"ploting targets. {e}")
 
-    else:
-        return (plot.fig, errors)
+    return (plot.fig, errors)
 
 
 def populate_interactive_laser(target, collision_time, mysite, mydate, logger):
@@ -389,13 +391,14 @@ def populate_interactive_laser(target, collision_time, mysite, mydate, logger):
     logger.debug(f'my date={mydate}')
     TOOLS = "pan,wheel_zoom,box_zoom,reset,save"
     toolbar_location = 'above'
-    plot_height = 810
-    plot_width = 770
+    plot_height = 930
+    plot_width = 1000
+
     sizing_mode = 'scale_both' #'stretch_both'
     # note: output_backend: webgl is to optimize drawings, but can't draw dotted line
     #fig_args = {"x_axis_type": "datetime",  "title": title, "tools": TOOLS, "toolbar_location": toolbar_location, "sizing_mode": sizing_mode} #  "output_backend": "webgl"}
 
-    fig_args = {"x_axis_type": "datetime",  "title": title, "tools": TOOLS, "toolbar_location": toolbar_location, "plot_height": plot_height, "plot_width": plot_width, "sizing_mode": sizing_mode} #  "output_backend": "webgl"}
+    fig_args = {"x_axis_type": "datetime",  "title": title, "tools": TOOLS, "toolbar_location": toolbar_location, "height": plot_height, "width": plot_width} # "sizing_mode": sizing_mode} #  "output_backend": "webgl"}
 
     plot = LaserPlot(logger, **fig_args)
 

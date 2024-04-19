@@ -1,30 +1,54 @@
-    <form  class="entry form-inline" action="Ope" method="POST" id="ope" enctype="multipart/form-data">
+<form  class="entry form-inline" action="Ope" method="POST" id="opeP" enctype="multipart/form-data">
 
-
-    <div class="row clearfix">
-    <div class="col-md-9">
-        <label for="site">Site</label><br>
-
-        <select name="site" class="form-control">
-            <option value="subaru">Mauna Kea</option>
-        </select>
-
-        <div class="input-group date">
-            <input type="text" class="form-control" id="sitedate_ope" name="date" required aria-required="true" placeholder="YYYY-MM-DD" pattern="^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$">
-            <div class="input-group-addon">
-            <span class="glyphicon glyphicon-calendar"></span>
-            </div>
-        </div>
-
+    <div class="row">
+    <div class="col-sm-3">
+    <label for="site" class='h5'>Site:</label>
+    <div class="input-group">
+    <select name="site" id='site' class="form-select form-control">
+    <option value="subaru">Mauna Kea</option>
+    </select>
     </div>
     </div>
+	  
+    <div class="col-sm-3">
+    <label for="empty" class='h5'>&nbsp;  </label>
+    <div class="input-group date">
+    <input type="date" id='empty' size="11" class="form-control"  name="date" required aria-required="true">
+    <div class="input-group-addon">
+    <span class="glyphicon glyphicon-calendar"></span>
+    </div>
+    </div>
+    </div> 
+    </div>	
+
     <br>
 
-    <!-- <p><input type=file name="ope[]"  required aria-required="true"  class="btn btn-default" multiple=""> -->
-    <p><input type=file name="ope[]" required aria-required="true" class="filestyle" data-buttonBefore="true" data-buttonName="btn-primary" data-placeholder="ope,prm files"  multiple="">     
+    <div class="row">	
+    <div class="col-sm-3">  
+    <label for="equinox" class='h5'>Equinox:</label>
+    <select name="equinox" id='equinox' class="form-select form-control">
+    <option selected="selected" >2000.0</option>
+    <option>1950.0</option>
+    <option>1900.0</option>    
+    </select>
+    </div>
+    </div>
 
-     <br><br>   
-     <input type=submit value="Plot" form="ope" class="btn btn-success" id="plot">
-        
-    </form>
+    <br>
+
+    <div class="row">	
+    <div class="col-sm-6">  
+    <label for="opefile" class="form-label h5">Ope File:</label>
+    <input class="form-control" type="file" id="opefile" name="ope[]"  required  multiple>
+    </div>
+    </div>
+
+    <!--
+    <p><input type="file" name="ope[]" required aria-required="true" class="filestyle" data-buttonBefore="true" data-buttonName="btn-primary" data-placeholder="ope,prm files"  multiple="">
+     -->     
+
+    <br><br>   
+    <input type="submit" value="Plot" form="opeP" class="btn btn-success" id="opeplot">
+
+</form>
 
