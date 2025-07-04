@@ -25,23 +25,24 @@ from .laser_plot import LaserPlot
 from oscript.parse.ope import get_vars_ope, get_coords2
 from g2base.astro import radec
 
+# soss pattern +-, 6 digits, decimal points
+soss_pattern = r"[+-]?\d{6}(?:\.\d+)?"
+
+# degree pattern  1-3 digits, decimal points
+deg_pattern = r"[+-]?\d{1,3}(?:\.\d+)?"
+
 # ra/dec 123456.789
-ra_pattern1 = "^(2[0-3]|[0-1][0-9])[0-5][0-9][0-5][0-9](\.\d+)?$"
+ra_pattern1 = r"^(?:(?:[01][0-9]|2[0-3])[0-5][0-9][0-5][0-9](?:\.\d+)?|240000(?:\.0+)?)$"
 ra_prog1 = re.compile(ra_pattern1)
-dec_pattern1 = "^[+|-]?[0-8][0-9][0-5][0-9][0-5][0-9](\.\d+)?$"
+dec_pattern1 = r"^[+-]?(?:[0-8][0-9][0-5][0-9][0-5][0-9](\.\d+)?|900000(\.0+)?)$"
 dec_prog1 = re.compile(dec_pattern1)
 
 # ra/dec hh:mm:ss.sss dd:mm:ss.ss
-ra_pattern2 = "^(2[0-3]|[0-1][0-9]):[0-5][0-9]:[0-5][0-9](\.\d+)?$"
+#ra_pattern2 = "^(2[0-3]|[0-1][0-9]):[0-5][0-9]:[0-5][0-9](\.\d+)?$"
+ra_pattern2 = r"^(?:([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\.\d+)?|24:00:00(?:\.0+)?)$"
 ra_prog2 = re.compile(ra_pattern2)
-dec_pattern2 = "^[+|-]?[0-8][0-9]:[0-5][0-9]:[0-5][0-9](\.\d+)?$"
+dec_pattern2 = r"^[+-]?(?:[0-8][0-9]:[0-5][0-9]:[0-5][0-9](?:\.\d+)?|90:00:00(?:\.0+)?)$"
 dec_prog2 = re.compile(dec_pattern2)
-
-# ra/dec  degree    0.~360.   +-90
-ra_pattern3 = "^(?:[0-9]\d?|[12]\d{2}|3[0-5]\d)(\.\d+)?$"
-ra_prog3 = re.compile(ra_pattern3)
-dec_pattern3 = "^[+|-]?[0-8]?[0-9](\.\d+)?$"
-dec_prog3 = re.compile(dec_pattern3)
 
 
 class TargetError(Exception):
@@ -254,7 +255,7 @@ def read_csv(csvs, header, radec_unit,  logger):
                 targets.append(res)
             except Exception as e:
                 logger.error(f'Error: reading csv file(s). {e}')
-                targets.append(Bunch.Bunch(name=name, ra=row.ra, dec=row.dec, equinox=row.equinox, err=e))
+                targets.append(Bunch.Bunch(name=name, ra=row.ra, dec=row.dec, coord=f'{ra} {dec}', equinox=row.equinox, err=e))
 
     logger.debug(f'targets={targets}')
     return targets
@@ -297,39 +298,79 @@ def _validate_target(name, ra, dec, equinox, logger):
     errs = [err for err in [ra_valid, dec_valid, name_valid] if err]
     errs = ', '.join(errs)
 
-    return  Bunch.Bunch(name=name, ra=ra, dec=dec, equinox=equinox, err=errs)
+    return  Bunch.Bunch(name=name, ra=ra, dec=dec, coord=f'{ra} {dec}', equinox=equinox, err=errs)
 
-def text_dict(radec, equinox, logger):
+
+def validate_ra_dec_format(name, coord, equinox, logger, unit=''):
+    name, name_error = validate_name(name)
+    try:
+        if unit.lower() == "degree":
+            logger.debug(f'coord deg={coord}')
+            c = SkyCoord(coord, unit=(u.deg, u.deg))
+        elif unit.lower() == 'hourangle':
+            logger.debug(f'coord hourangle={coord}')
+            c = SkyCoord(coord, unit=(u.hourangle, u.deg))
+
+        #hours, minutes, seconds = radec.degToHms(c.ra.deg[0])
+        ra = radec.raHmsToString(c.ra.hms.h, c.ra.hms.m, c.ra.hms.s, format='%02d:%02d:%06.3f')
+        dec = radec.decDegToString(c.dec.deg, format='%s%02d:%02d:%05.2f')
+        coord_error = None
+    except Exception as e:
+        logger.error(f'error={e}')
+        coord_error = f'{e}'
+
+    errs = [err for err in [name_error, coord_error] if err]
+    logger.debug(f'errs={errs}')
+
+    errs = ', '.join(errs)    
+
+    if not errs:
+        ra_dec = Bunch.Bunch(name=name, ra=ra, dec=dec, coord=f'{ra} {dec}', equinox=equinox, err=errs)
+        logger.debug(f'deg to hms/dms. {ra_dec}')
+    else:
+        ra_dec = Bunch.Bunch(name=name, ra=None, dec=None, coord=coord, equinox=equinox, err=errs)
+    return ra_dec
+
+
+def verify_coord_format(name, coord, equinox, logger):
+
+    logger.debug(f'coord=<{coord}>, type{type(coord)}')
+    matches = re.findall(soss_pattern , coord)
+    if len(matches) == 2:
+        logger.debug(f'soss pattern={matches}')
+        ra = matches[0].strip()
+        dec = matches[1].strip()
+        res = _validate_target(name, ra, dec, equinox, logger)
+        return res
+    
+    matches = re.findall(deg_pattern, coord)    
+    if len(matches) == 2:
+        logger.debug(f'degree pattern={matches}')
+        return validate_ra_dec_format(name, coord, equinox, logger, unit='degree')
+        #print(f'degree pattern. matches={matches}')
+
+    else:
+        return validate_ra_dec_format(name, coord, equinox, logger, unit='hourangle')
+
+    
+
+def text_dict(target, equinox, logger):
 
     targets = []
-    target_list = radec.split("\r\n")
+    target_list = target.split("\r\n")
 
     logger.debug(f'text target_list={target_list}')
 
     for t in target_list:
-        t = t.strip().split()
         logger.debug(f'target={t}')
-        if not t:
-            continue
-        try:
-            name = t[0]
-        except Exception as e:
-            name = 'No Name'
-        try:
-            ra = t[1]
-        except Exception as e:
-            ra = 'None'
-        try:
-            dec = t[2]
-        except Exception as e:
-            dec = 'None'
-        res = _validate_target(name, ra, dec, equinox, logger)
-
+        name = t.split()[0]
+        idx = t.find(' ')
+        coord = t[idx:].strip()
+        logger.debug(f'name={name}, coord={coord}')
+        res = verify_coord_format(name, coord, equinox, logger)
         targets.append(res)
-
-    logger.debug(f'text targets={targets}')
-    return targets
-
+        
+    return targets 
 
 def site(mysite):
 
@@ -349,8 +390,8 @@ def populate_interactive_target(target_list, mysite, mydate, logger):
 
     TOOLS = "pan,wheel_zoom,box_zoom,reset,save"
     toolbar_location = 'above'
-    plot_height = 930
-    plot_width = 1280
+    plot_height = 1230
+    plot_width = 1580
     # note: output_backend: webgl is to optimize drawings, but can't draw dotted line
     fig_args = {"x_axis_type": "datetime",  "title": title, "tools": TOOLS, "toolbar_location": toolbar_location, "height": plot_height, "width": plot_width,} #  "output_backend": "webgl"}
 
@@ -361,13 +402,16 @@ def populate_interactive_target(target_list, mysite, mydate, logger):
         if not t.err:
             targets.append(StaticTarget(name=t.name, ra=t.ra, dec=t.dec, equinox=t.equinox))
         else:
-            errors.append(f'name={t.name}, ra={t.ra}, dec={t.dec}, equinox={t.equinox}. err={t.err}')
+            errors.append(f'name={t.name}, coord={t.coord}, equinox={t.equinox}. err={t.err}')
 
     target_data = []
     for tgt in targets:
         info_list = mysite.get_target_info(tgt)
         target_data.append(Bunch.Bunch(history=info_list, target=tgt))
 
+    if not target_data:
+        return (plot.fig, errors)
+        
     try:
         plot.plot_target(mysite, target_data)
     except Exception as e:
@@ -376,7 +420,6 @@ def populate_interactive_target(target_list, mysite, mydate, logger):
         #raise TargetError(f"ploting targets. {e}")
 
     return (plot.fig, errors)
-
 
 def populate_interactive_laser(target, collision_time, mysite, mydate, logger):
     logger.debug('populate_interactive_laser...')

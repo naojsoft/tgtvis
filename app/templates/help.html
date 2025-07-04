@@ -2,17 +2,6 @@
 
 {% block title %}Help{% endblock %}
 
-{% block scripts %}
-{{super()}}
-
-<script type=text/javascript src="{{ url_for('static', filename='js/target.js') }}"></script>
-<script type=text/javascript src="{{ url_for('static', filename='js/bootstrap-datepicker.js') }}"></script>
-<script type=text/javascript src="{{ url_for('static', filename='js/jquery-1.9.1.min.js') }}"></script>
-<script type=text/javascript src="{{ url_for('static', filename='js/datepicker.js') }}"></script>
-
-
-{% endblock %}
-
 
 {% block page_content %}
 
@@ -25,9 +14,8 @@
 <dl>
    <dt>Format</dt>
    <dd>- Name: no space allowed btw characters, short name preferred</dd>
-   <dd>- RA: hhmmss.s* or hh:mm:ss.s*</dd>
-   <dd>- DEC: ddmmss.s* or dd:mm:ss.s*</dd>
-   <dd>- Format error will be indicated if any</dd>
+   <dd>- Enter Name, RA, and Dec, separated by spaces </dd>
+   <dd>- See the RA and Dec format details on the Text page</dd>
    <dd>- Max num of targets is 35-ish</dd>
 </dl>
 
@@ -56,21 +44,8 @@
   <dd>- Csv with header,  header keywords are "name", "ra", "dec", and "equinox" in any order. lowercae/mixed-case/upercase are acceptable.</dd>
   <dd>- Csv without header,  "name", "ra", "dec", and "equinox" have to be in order.</dd>
   <dd>- Ra/Dec format: hhmmss.s*/hh:mm:ss.s*, +-dd:mm:ss.s*/ddmmss.s*  or degree. Checkbox for either hours or degree</dd>
+  <dd>- You can see the format details in 'CSV Help' on the Csv page</dd>
 </dl>
-
-<pre>
-  csv with header.  ra/dec in hours e.g.
-  ra, Dec, equinox, NAME
-  000000.00, +000000.0, 2000.0, HOURS
-  00:00:00.00, +00:00:00.0, 2000.0, HOURS 
-
-  csv with header.  ra/dec in deg e.g.
-  ra, Dec, equinox, NAME
-  0.00, 0.0, 2000.0, DEG
-  
-  csv without header. e.g.
-  BBBB, 000000.00, +000000.0, 2000.0
-</pre>  
 
 
 <h2>Interactive Methods</h2> 

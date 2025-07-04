@@ -236,7 +236,6 @@ def Ope():
         html = html.encode('utf-8')
         return html
 
-
 @main.route('/Text', methods=['POST'])
 def Text():
 
@@ -244,8 +243,9 @@ def Text():
         return redirect(url_for('main.index'))
 
     equinox = request.form.get('equinox')
-    radec = request.form.get('radec')
-    targets = helper.text_dict(radec=radec, equinox=equinox, logger=app.logger)
+    target = request.form.get('target').strip()
+    app.logger.debug(f'target={target}')
+    targets = helper.text_dict(target=target, equinox=equinox, logger=app.logger)
     mysite = helper.site(request.form.get('site'))
     mydate = request.form.get('date')
 

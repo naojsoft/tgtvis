@@ -1,31 +1,29 @@
- <form  class="entry form-inline" action="Laser" method="POST" id="laserC" enctype="multipart/form-data">
+<form action="Laser" method="POST" id="laserC" enctype="multipart/form-data">
 
-    <div class="row">
-    <div class="col-sm-3">
-    <label for="site" class='h5'>Site:</label>
-    <div class="input-group">
-    <select name="site" id='site' class="form-select form-control">
-    <option value="subaru">Mauna Kea</option>
-    </select>
+  <!-- Site Selection -->
+  <div class="row mb-3">
+    <div class="col-md-4">
+      <label for="site" class="form-label h5">Site</label>
+      <select name="site" id="site" class="form-select" required>
+        <option value="subaru">Mauna Kea</option>
+      </select>
     </div>
+  </div>
+
+  <!-- Laser File Upload -->
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <label for="laserfile" class="form-label h5">Laser File</label>
+      <input class="form-control" type="file" id="laserfile" name="laser" required aria-required="true" accept=".txt,.laser">
+      <div class="form-text">Upload a valid .laser or .txt file.</div>
     </div>
-	  
-    </div>	
+  </div>
 
-    <br>
-
-    <div class="row">
-    <div class="col-sm-3">  
-    <label for="laserfile" class="form-label h5">Laser File:</label>
-    <input class="form-control" type="file" id="laserfile" name="laser"  required>
+  <!-- Submit Button -->
+  <div class="row">
+    <div class="col-auto">
+      <button type="submit" class="btn btn-success" id="plot">Plot</button>
     </div>
-    </div>
+  </div>
 
-   <!-- 
-    <p><input type=file name="laser" required aria-required="true" class="filestyle" data-buttonBefore="true" data-buttonName="btn-primary" data-placeholder="laser collision file">     -->
-
-     <br><br>   
-     <input type=submit value="Plot" form="laserC" class="btn btn-success" id="plot">
-        
 </form>
-

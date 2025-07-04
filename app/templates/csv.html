@@ -1,101 +1,98 @@
- <form  class="entry form-inline" action="Csv" method="POST" id="csvP" enctype="multipart/form-data">
+<form action="Csv" method="POST" id="csvP" enctype="multipart/form-data">
 
-    <div class="row">
-    <div class="col-sm-3">
-    <label for="site" class='h5'>Site:</label>
-    <div class="input-group">
-    <select name="site" id='site' class="form-select form-control">
-    <option value="subaru">Mauna Kea</option>
-    </select>
+  <!-- Site and Date -->
+  <div class="row mb-3">
+    <div class="col-md-4">
+      <label for="site" class="form-label h5">Site</label>
+      <select name="site" id="site" class="form-select" required>
+        <option value="subaru">Mauna Kea</option>
+      </select>
     </div>
-    </div>
-	  
-    <div class="col-sm-3">
-    <label for="empty" class='h5'>&nbsp;  </label>
-    <div class="input-group date">
-    <input type="date" id='empty' size="11" class="form-control"  name="date" required aria-required="true">
-    <div class="input-group-addon">
-    <span class="glyphicon glyphicon-calendar"></span>
-    </div>
-    </div>
-    </div> 
 
-    </div>	
+    <div class="col-md-4">
+      <label for="empty" class="form-label h5">Date</label>
+      <input type="date" id="empty" name="date" class="form-control" required aria-required="true">
+    </div>
+  </div>
 
-    <br>
-    
-    <div class="row">	
-    <div class="col-sm-6">  
-    <label for="csvfile" class="form-label h5">Csv File:</label>
-    <input class="form-control" type="file" id="csvfile" name="csv[]"  required  multiple>
+  <!-- CSV File Upload -->
+  <div class="row mb-3">
+    <div class="col-md-6">
+      <label for="csvfile" class="form-label h5">CSV File(s)</label>
+      <input class="form-control" type="file" id="csvfile" name="csv[]" required multiple aria-required="true" accept=".csv,.txt">
+      <div class="form-text">Upload one or more CSV files (.csv or .txt).</div>
     </div>
-    </div>
-      
-    <br>
+  </div>
 
-    <div class="row">
-    <div class="col-sm-3">    
-    <div class="form-check">
-    <input class="form-check-input" type="checkbox" value="1" name='header' id="csvheader">
-    <label class="form-check-label" for="csvheader">
-    Has header?
-    </label>
+  <!-- Header checkbox -->
+  <div class="row mb-3">
+    <div class="col-md-4">
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" value="1" name="header" id="csvheader">
+        <label class="form-check-label" for="csvheader">Has header?</label>
+      </div>
     </div>
-    </div>
-    </div> 	
-    
-    <div class="row">
-    <div class="col-sm-6">    
-    <div class="form-check form-check-inline">
-    <input class="form-check-input" type="radio" name="radec" id="radecHour" checked>
-    <label class="form-check-label" for="radecHour">
-    Ra/Dec in hms/dms
-    </label>
-    </div>
-    <div class="form-check form-check-inline">
-    <input class="form-check-input" type="radio" name="radec" id="radecDeg">
-    <label class="form-check-label" for="radecDeg">
-    Ra/Dec in Degree
-    </label>
-    </div>
-    <br>
+  </div>
 
-    <br>   
-    <input type=submit value="Plot" form="csvP" class="btn btn-success" id="plot">
-        
+  <!-- RA/DEC format selection -->
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <label class="form-label h5">RA/DEC Format</label><br>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="radec" id="radecHour" value="hms" checked>
+        <label class="form-check-label" for="radecHour">Ra/Dec in hms/dms</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="radec" id="radecDeg" value="deg">
+        <label class="form-check-label" for="radecDeg">Ra/Dec in Degree</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submit Button -->
+  <div class="row mb-4">
+    <div class="col-auto">
+      <button type="submit" class="btn btn-success" id="plot">Plot</button>
+    </div>
+  </div>
 </form>
 
-<br><br><br>
-
+<!-- Help Section -->
 <div class="row">
-<div class="col-sm-12">    
-<details>
-<summary>CSV Help</summary>
-    <dl>
-    <dd>- Upload csv with/out header file(s).  Checkbox for header</dd>
-    <dd>- Csv with header,  header required keywords are "name", "ra", "dec", and "equinox" in any order. lowercae/mixed-case/upercase are acceptable.</dd>
-    <dd>- Csv without header,  "name", "ra", "dec", and "equinox" have to be in order.</dd>
-    <dd>- Ra/Dec format: hhmmss.s*/hh:mm:ss.s*, +-dd:mm:ss.s*/ddmmss.s*  or degree. Checkbox for either hms/dms or degree</dd>
-    </dl>
+  <div class="col-md-12">
+    <details>
+      <summary class="h5 mb-2">CSV Help</summary>
+      <dl class="mb-3">
+        <dd>- Upload CSV file(s), with or without a header row.</dd>
+        <dd>- If the CSV has a header, required columns: <code>name</code>, <code>ra</code>, <code>dec</code>, <code>equinox</code> (case-insensitive, any order).</dd>
+        <dd>- If no header, order must be: <code>name</code>, <code>ra</code>, <code>dec</code>, <code>equinox</code>.</dd>
+        <dd>- RA/Dec accepted formats:
+          <ul>
+            <li><b>hms/dms</b>: <code>hhmmss.s</code>, <code>hh:mm:ss.s</code>, etc.</li>
+            <li><b>degrees</b>: <code>123.456</code>, <code>-54.321</code>, etc.</li>
+          </ul>
+        </dd>
+      </dl>
 
-<pre style="background-color: #EBECE4;">
-e.g.
-csv with header.  ra/dec in hms/dms
-ra, Dec, equinox, NAME,  comment,  etc  
-000000.00, +000000.0, 2000.0, AAA,  foo, 123
+      <pre class="p-3 rounded bg-light">
+Examples:
+
+With header, RA/Dec in hms/dms:
+ra, Dec, equinox, NAME, comment
+000000.00, +000000.0, 2000.0, AAA, foo
 00:00:00.00, +00:00:00.0, 2000.0, BBB, hoo, abc 
 
-csv with header.  ra/dec in deg
+With header, RA/Dec in degrees:
 ra, Dec, equinox, NAME
-0.00, 0.0, 2000.0, subaru
+0.00, 0.0, 2000.0, Subaru
 
-csv without header.  ra/dec in hms/dms
-HI, 000000.00, +000000.0, 2000.0
+Without header, RA/Dec in hms/dms:
+HI, 00:50:00.00, -10:00:00.0, 2000.0
 HI, 00:50:00.00, -10:00:00.0, 2000.0
 
-csv without header.  ra/dec in degree
+Without header, RA/Dec in degrees:
 HI, 359.99, 89.99, 2000.0
-</pre>
-</details>
-</div>
+      </pre>
+    </details>
+  </div>
 </div>
