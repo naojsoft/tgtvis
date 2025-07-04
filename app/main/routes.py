@@ -46,13 +46,14 @@ def help():
 
     return render_template('help.html')
 
-@main.route('/opeError/<error>')
-
+"""
+@main.route('/ope-error/<error>')
 def opeError(error):
 
     return render_template('opeError.html', error=error)
+"""
 
-@main.route('/Laser', methods=['POST'])
+@main.route('/laser', methods=['POST'])
 def Laser():
 
     errors = []
@@ -105,7 +106,7 @@ def Laser():
     return html
 
 
-@main.route('/Csv', methods=['POST'])
+@main.route('/csv', methods=['POST'])
 def Csv():
 
     if  not request.method in ['POST']:
@@ -169,7 +170,7 @@ def Csv():
     return html
 
 
-@main.route('/Ope', methods=['POST'])
+@main.route('/ope', methods=['POST'])
 def Ope():
 
     if  not request.method in ['POST']:
@@ -236,7 +237,7 @@ def Ope():
         html = html.encode('utf-8')
         return html
 
-@main.route('/Text', methods=['POST'])
+@main.route('/text', methods=['POST'])
 def Text():
 
     if  not request.method in ['POST']:
