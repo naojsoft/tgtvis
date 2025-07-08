@@ -9,7 +9,9 @@ document.addEventListener('DOMContentLoaded', function () {
     customClass: 'custom-popover',
     content: `
 <pre>RA              DEC
-000000.000      +-000000.00
+123456.78        765431.1
+123456.7        +543201
+123456          -654321.000
 12h34m56.7s     -76d54m32.1s
 12h 34m 56.7s   -76d 54m 32.1s
 12h34m56s       -65d43m21s

@@ -25,8 +25,8 @@ from .laser_plot import LaserPlot
 from oscript.parse.ope import get_vars_ope, get_coords2
 from g2base.astro import radec
 
-# soss pattern +-, 6 digits, decimal points
-soss_pattern = r"[+-]?\d{6}(?:\.\d+)?"
+# soss pattern. match a sequence with at least 6 consecutive digits; '+', '-', and decimal point are optional.
+soss_pattern = r'(?<![+-])[+-]?\d{6,}(?:\.\d+)?'  #r'(?<![+-])[+-]?\b\d{6}\b(?:\.\d+)?'
 
 # degree pattern  1-3 digits, decimal points
 deg_pattern = r"[+-]?\d{1,3}(?:\.\d+)?"
@@ -38,7 +38,6 @@ dec_pattern1 = r"^[+-]?(?:[0-8][0-9][0-5][0-9][0-5][0-9](\.\d+)?|900000(\.0+)?)$
 dec_prog1 = re.compile(dec_pattern1)
 
 # ra/dec hh:mm:ss.sss dd:mm:ss.ss
-#ra_pattern2 = "^(2[0-3]|[0-1][0-9]):[0-5][0-9]:[0-5][0-9](\.\d+)?$"
 ra_pattern2 = r"^(?:([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\.\d+)?|24:00:00(?:\.0+)?)$"
 ra_prog2 = re.compile(ra_pattern2)
 dec_pattern2 = r"^[+-]?(?:[0-8][0-9]:[0-5][0-9]:[0-5][0-9](?:\.\d+)?|90:00:00(?:\.0+)?)$"
@@ -125,7 +124,7 @@ def validate_ra(ra):
     elif ra_prog2.match(ra):
         pass
     else:
-        err_msg = f"Ra invalid value or format.  ra={ra}, format: hh:mm:ss.s* or hhmmss.s*"
+        err_msg = f"Ra invalid value or format.  ra={ra}, format: hhmmss.s*"
 
     return (ra, err_msg)
 
@@ -139,7 +138,7 @@ def validate_dec(dec):
     elif dec_prog2.match(dec):
         pass
     else:
-        err_msg = f"Dec invalid value or format.  dec={dec}, format: dd:mm:ss.s* or ddmmss.s*"
+        err_msg = f"Dec invalid value or format.  dec={dec}, format: ddmmss.s*"
 
     return (dec, err_msg)
 
@@ -322,7 +321,7 @@ def validate_ra_dec_format(name, coord, equinox, logger, unit=''):
     errs = [err for err in [name_error, coord_error] if err]
     logger.debug(f'errs={errs}')
 
-    errs = ', '.join(errs)    
+    errs = ', '.join(errs)
 
     if not errs:
         ra_dec = Bunch.Bunch(name=name, ra=ra, dec=dec, coord=f'{ra} {dec}', equinox=equinox, err=errs)
@@ -338,12 +337,13 @@ def verify_coord_format(name, coord, equinox, logger):
     matches = re.findall(soss_pattern , coord)
     if len(matches) == 2:
         logger.debug(f'soss pattern={matches}')
-        ra = matches[0].strip()
-        dec = matches[1].strip()
+        coord = coord.split()
+        ra = coord[0].strip()
+        dec = coord[1].strip()
         res = _validate_target(name, ra, dec, equinox, logger)
         return res
-    
-    matches = re.findall(deg_pattern, coord)    
+
+    matches = re.findall(deg_pattern, coord)
     if len(matches) == 2:
         logger.debug(f'degree pattern={matches}')
         return validate_ra_dec_format(name, coord, equinox, logger, unit='degree')
@@ -352,7 +352,7 @@ def verify_coord_format(name, coord, equinox, logger):
     else:
         return validate_ra_dec_format(name, coord, equinox, logger, unit='hourangle')
 
-    
+
 
 def text_dict(target, equinox, logger):
 
@@ -369,8 +369,8 @@ def text_dict(target, equinox, logger):
         logger.debug(f'name={name}, coord={coord}')
         res = verify_coord_format(name, coord, equinox, logger)
         targets.append(res)
-        
-    return targets 
+
+    return targets
 
 def site(mysite):
 
@@ -411,7 +411,7 @@ def populate_interactive_target(target_list, mysite, mydate, logger):
 
     if not target_data:
         return (plot.fig, errors)
-        
+
     try:
         plot.plot_target(mysite, target_data)
     except Exception as e:
