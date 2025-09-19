@@ -1,7 +1,7 @@
 import os
 import sys
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import time
 from dateutil import tz
 import pytz
@@ -22,182 +22,187 @@ from bokeh.models.widgets import CheckboxGroup
 from bokeh.models import Span
 
 from qplan import entity, common
-from qplan.util.site import get_site
-
-#from astropy.coordinates import get_mooni
-#from astroplan import Observer
-#from astropy.utils.iers import conf
-#conf.auto_max_age = None
-
+#from qplan.util.site import get_site
+from qplan.util.calcpos import load, ssbodies, alt2airmass
 from ginga.misc import Bunch
 
 
-class BasePlot(object):
-
-    def __init__(self, logger=None, **args):
-        super(BasePlot, self).__init__()
-
-        self.utc = tz.gettz('UTC')
-        self.y_min = 0 # degree
-        self.y_max = 90
-
+class BasePlot:
+    def __init__(self, logger=None, **fig_args):
         self.logger = logger
-        self.logger.debug(f"args={args}")
-        self.fig = figure(**args)
-        self.subaru = get_site('subaru')
+        self.utc = tz.gettz('UTC')
+        self.y_min = 0
+        self.y_max = 90
+        self.logger.debug(f"Initializing BasePlot with args: {fig_args}")
+        self.fig = figure(**fig_args)
 
-    def plot_base(self, site, tgt_data):
+    def plot_base(self, site):
+        """Sets up the basic plot background: axes, sunset/sunrise, twilight bands, etc."""
+        local_timezone = site.tz_local
+        date_str = site.date.strftime("%Y-%m-%d")
 
-        timezone = site.tz_local
+        self.logger.debug(f"Plotting base for {date_str} with timezone {local_timezone}")
+        self.fig.title.text = f"Visibility for the night of {date_str}"
 
-        self.logger.debug('plot_target timezone={} tzname={}'.format(timezone, timezone.tzname(None)))
-        title = "Visibility for the night of {}".format(site.date.strftime("%Y-%m-%d"))
-        self.fig.title.text = title
-        sunset, sunrise = self.sunset_sunrise(site, timezone)
+        sunset, sunrise = self._sunset_sunrise(site)
+        self._set_axes_ranges(sunset, sunrise)
+        self._set_axes_labels()
 
-        # X(time)/Y(degree) axis range
-        self.fig.y_range = Range1d(self.y_min, self.y_max)
+        # Drawing overlays
+        self.logger.debug(f"drawing sunset/sunrise..")
+        self._draw_sunset_sunrise(sunset, sunrise)
+        self.logger.debug(f"drawing altitude..")
+        self._draw_altitude_bands()
+        self.logger.debug(f"drawing twilight..")
+        self._draw_twilight(site, sunset, sunrise)
+        self.logger.debug(f"drawing middle night..")
+        self._draw_middle_night(sunset, sunrise)
+        self.logger.debug(f"drawing airmass..")
+        self._draw_airmass_axis()
+        self.logger.debug(f"drawing moon anno... site={type(site)}")
+        self._draw_moon_annotation(site, sunrise, local_timezone)
+
+        self.logger.debug(f"legend click policy..")
+        self.fig.legend.click_policy = "hide"
+        self.logger.debug("Base plot rendering complete.")
+
+    # -----------------------
+    # Axis and Range Settings
+    # -----------------------
+    def _set_axes_ranges(self, sunset, sunrise):
         self.fig.x_range = Range1d(sunset, sunrise)
+        self.fig.y_range = Range1d(self.y_min, self.y_max)
+        self.fig.yaxis[0].ticker = FixedTicker(ticks=list(range(0, 91, 10)))  # 0 to 90 every 10 degree
 
-        self.altitude()
-        self.twilight(site, sunset, sunrise, timezone)
-        #self.middle_night(site, sunset, sunrise, timezone)
-        self.middle_night(sunset, sunrise)
-        self.airmass()
-        self.moon_at_midnight(site, sunrise, timezone)
-
-        self.logger.debug(f'label x/y axis')
-        # label X/Y axis
+    def _set_axes_labels(self):
         self.fig.xaxis.axis_label = "HST"
         self.fig.yaxis[0].axis_label = "Altitude"
-        self.fig.yaxis[1].axis_label = "Airmass"
 
-        self.fig.legend.click_policy = "hide"
-
-        self.logger.debug(f'plot base done...')
-
-    def altitude(self):
-
-        self.fig.add_layout(BoxAnnotation(bottom=75,  fill_alpha=0.1, fill_color='yellow', line_color='yellow'))
+    # -----------------------
+    # Visual Elements
+    # -----------------------
+    def _draw_altitude_bands(self):
+        """Highlights poor visibility regions."""
+        self.fig.add_layout(BoxAnnotation(bottom=75, fill_alpha=0.1, fill_color='yellow', line_color='yellow'))
         self.fig.add_layout(BoxAnnotation(top=30, fill_alpha=0.1, fill_color='yellow', line_color='yellow'))
 
-    def airmass(self):
+    def _draw_airmass_axis(self):
+        """Right-hand axis: airmass values corresponding to altitude scale."""
+        # Use same range as altitude axis
+        self.fig.extra_y_ranges = {"Airmass": self.fig.y_range}
+        axis = LinearAxis(y_range_name="Airmass", axis_label="Airmass")
 
-        altitude_deg = np.arange(10, 90.5, 0.5)
-        airmass_f = 1.0/np.cos(np.radians(90-altitude_deg))
-        airmass = list(map(lambda n: "%.3f" % n, airmass_f))
+        # Choose some altitude positions for ticks
+        alt_ticks = [90, 80, 70, 60, 50, 40, 30, 20, 10]
+        am_vals   = [alt2airmass(a) for a in alt_ticks]
 
-        alt_airmass = {}
-        for alt, airmass in zip(altitude_deg, airmass):
-            res = alt % 1
-            if isclose(res, 0.0, abs_tol=0.01):
-                #self.logger.debug(f'close alt={alt:.0f}, res={res}')
-                alt_airmass[f'{alt:.0f}'] = f"{airmass}"
-            else:
-                #self.logger.debug(f'no close alt={alt:.1f}, res={res}')
-                alt_airmass[f'{alt:.1f}'] = f"{airmass}"
+        # Place ticks at those altitude values, but show airmass numbers
+        axis.ticker = FixedTicker(ticks=alt_ticks)
+        axis.major_label_overrides = {alt: f"{am:.2f}" for alt, am in zip(alt_ticks, am_vals)}
 
-        self.fig.extra_y_ranges = {"Airmass": Range1d(start=self.y_min, end=self.y_max)}
-        self.fig.add_layout(LinearAxis(y_range_name="Airmass"), 'right')
-        self.fig.yaxis[1].major_label_overrides = alt_airmass
+        self.fig.add_layout(axis, 'right')
 
-    def sunset_sunrise(self, site, timezone):
+    def _draw_middle_night(self, sunset, sunrise):
+        """Draw dashed line at midnight."""
+        middle = sunset + (sunrise - sunset) / 2
+        line = self.fig.line([middle, middle], [self.y_min, self.y_max],
+                             line_color='blue', line_width=2, line_dash='dashed')
 
-        self.logger.debug('site date={} type={}'.format(site.date, type(site.date)))
+        self._append_legend_item("Middle Night", [line])
 
+    def _draw_moon_annotation(self, site, sunrise, local_timezone):
+        """Display moon RA/Dec at midnight."""
+        midnight_local_timezone = datetime(site.date.year, site.date.month, site.date.day + 1,
+                            0, 0, 0, tzinfo=local_timezone)
+
+        self.logger.debug(f"midnight={midnight_local_timezone}, site={site.__dir__()}")
+
+        utc_dt = (midnight_local_timezone + timedelta(hours=10)).replace(tzinfo=timezone.utc)
+        ts  = load.timescale()
+        t   = ts.from_datetime(utc_dt)
+
+        moon = ssbodies['moon']
+
+        astrometric = site.location.at(t).observe(moon).apparent()
+        ra, dec, distance = astrometric.radec()
+
+        def format_hms(h, m, s):
+            return f"{int(h):02d}:{int(m):02d}:{s:04.1f}"
+
+        def format_dms(sign, d, m, s):
+            return f"{sign}{abs(int(d)):02d}:{int(m):02d}:{s:04.1f}"
+
+        h, m, s = ra.hms()
+        ra_str  = format_hms(h, m, s)
+
+        sign_num, d, mm, ss = dec.signed_dms()
+        sign = "+" if sign_num >= 0 else "-"
+        dec_str = format_dms(sign, d, mm, ss)
+
+        text = f"Moon at Midnight\nRa: {ra_str}\nDec: {dec_str}"
+        self.logger.debug(f"text={text}")
+
+        self.fig.text(x=[midnight_local_timezone], y=[0.5], text=[text], text_font_size="7pt",
+                      text_align="center", text_baseline="bottom")
+
+        self.logger.debug(f"done.......")
+
+    def _draw_twilight(self, site, sunset, sunrise):
+        """Shade civil, nautical, and astronomical twilight bands."""
+        et6 = site.evening_twilight_6(sunset)
+        et12 = site.evening_twilight_12(sunset)
+        et18 = site.evening_twilight_18(sunset)
+        mt18 = site.morning_twilight_18(sunset)
+        mt12 = site.morning_twilight_12(sunset)
+        mt6 = site.morning_twilight_6(sunset)
+
+        twilight_zones = [
+            ("Civil Twi", sunset, et6, mt6, sunrise, "orange", 0.4),
+            ("Nautical Twi", et6, et12, mt12, mt6, "navy", 0.2),
+            ("Astronomical Twi", et12, et18, mt18, mt12, "navy", 0.5),
+        ]
+
+        for name, ev_start, ev_end, mn_start, mn_end, color, alpha in twilight_zones:
+            y_vals = [self.y_max, self.y_min, self.y_min, self.y_max]
+            patch = self.fig.patch(
+                x=[ev_start, ev_start, ev_end, ev_end],
+                y=y_vals,
+                fill_color=color, fill_alpha=alpha,
+                line_color=color, line_alpha=alpha
+            )
+            patch2 = self.fig.patch(
+                x=[mn_start, mn_start, mn_end, mn_end],
+                y=y_vals,
+                fill_color=color, fill_alpha=alpha,
+                line_color=color, line_alpha=alpha
+            )
+            label = f"{name}: {ev_start.strftime('%H:%M:%S')} {mn_end.strftime('%H:%M:%S')}"
+            self._append_legend_item(label, [patch])
+
+    def _draw_sunset_sunrise(self, sunset, sunrise):
+        """Draw dashed line at sunset and sunrise."""
+        line1 = self.fig.line([sunset, sunset], [self.y_min, self.y_max], line_color='red', line_width=3, line_dash='dashed')
+        line2 = self.fig.line([sunrise, sunrise], [self.y_min, self.y_max], line_color='red', line_width=3, line_dash='dashed')
+        label = f"Sunset/rise {sunset.strftime('%H:%M:%S')} {sunrise.strftime('%H:%M:%S')}"
+        self._append_legend_item(label, [line1, line2])
+
+    def _sunset_sunrise(self, site):
+        """Return sunset and sunrise datetimes for the site/date."""
         sunset = site.sunset(site.date)
         sunrise = site.sunrise(site.date)
-        self.logger.debug(f"sunset={sunset.strftime('%Y-%m-%d %H:%M:%S')}")
-        self.logger.debug(f"sunrise={sunrise.strftime('%Y-%m-%d %H:%M:%S')}")
+        self.logger.debug(f"Sunset: {sunset}, Sunrise: {sunrise}")
+        return sunset, sunrise
 
-        sunset_line = self.fig.line([sunset, sunset], [self.y_min, self.y_max], line_color='red', line_width=3, line_dash='dashed')
-        sunrise_line = self.fig.line([sunrise, sunrise], [self.y_min, self.y_max], line_color='red', line_width=3, line_dash='dashed')
-        sun_legend = Legend(items=[LegendItem(label="Sunset/rise {} {}".format( sunset.strftime('%H:%M:%S'), sunrise.strftime('%H:%M:%S')), renderers=[sunset_line, sunrise_line])], location=('bottom_left'), background_fill_color='white', background_fill_alpha=1)
+    def _append_legend_item(self, label, renderers):
+        """Add legend item safely (create if needed)."""
+        if self.fig.legend:
+            leg = self.fig.legend.pop()
+        else:
+            leg = Legend(location='top_left', background_fill_color='white', background_fill_alpha=0.7)
+            self.fig.add_layout(leg, 'below')
 
-        # note: legend layout options: left, right, above, below or center
-        self.fig.add_layout(sun_legend, 'below')
+        leg.items.append(LegendItem(label=label, renderers=renderers))
 
-        self.logger.debug(f'sunset={sunset}, sunrise={sunrise}')
-
-        return (sunset, sunrise)
-
-    def moon_at_midnight(self, site, sunrise, timezone):
-
-        obs_date = site.date
-
-        mid_night = site.date + timedelta(days=1)
-        mid_night = datetime(mid_night.year, mid_night.month, mid_night.day, 0, 0, 0, tzinfo=timezone)
-
-        site.moon_set(mid_night)
-        self.fig.text(x=[mid_night], y=[0.5], text=["Moon at Midnight\nRa: {}\nDec: {}".format(site.moon.ra, site.moon.dec)], text_font_size="7pt", text_align="center", text_baseline="bottom")
-
-    def middle_night(self, sunset, sunrise):
-
-        # middle of the night
-        middle_night = sunset + timedelta(0, (sunrise-sunset).total_seconds() / 2.0)
-        self.logger.debug(f'MIddle night={middle_night}')
-
-        mn_line = self.fig.line([middle_night, middle_night], [self.y_min, self.y_max], line_color='blue', line_width=2, line_dash='dashed')
-
-        self.logger.debug(f'legend={self.fig.legend}')
-        mid_legend = LegendItem(label="Middle Night", renderers=[mn_line])
-
-        leg = self.fig.legend.pop()
-        self.logger.debug(f'popped leg={leg.items}')
-        leg.items.append(mid_legend)
-
-        self.logger.debug(f'middle night done...')
-
-    def twilight(self, site,  sunset, sunrise, timezone):
-        self.logger.debug('twilight....')
-
-        # evening  civil twilight 6 degree
-        et6 = site.evening_twilight_6(sunset)
-        self.logger.debug(f'Evening Civil Twi={et6}')
-
-        # evening  nautical twilight 12 degree
-        et12 = site.evening_twilight_12(sunset)
-        self.logger.debug(f'Evening Nautical Twi={et12}')
-
-        # evening  astronomical twilight 18 degree
-        et18 = site.evening_twilight_18(sunset)
-        self.logger.debug(f'Evening Astro Twi={et18}')
-
-        # morning  astronomical twilight 18 degree
-        mt18 = site.morning_twilight_18(sunset)
-        self.logger.debug(f'Morning Astro Twi={mt18}')
-
-        # morning  nautical twilight 12 degree
-        mt12 = site.morning_twilight_12(sunset)
-        self.logger.debug(f'Morning Nautical Twi={mt12}')
-
-        # morning  civil twilight 6 degree
-        mt6 = site.morning_twilight_6(sunset)
-        self.logger.debug(f'Morning Civil Twi={mt6}')
-
-        twi6 = self.fig.patches(xs=[[sunset, sunset, et6, et6], [mt6, mt6, sunrise, sunrise]], ys=[[self.y_max, self.y_min, self.y_min, self.y_max], [self.y_max, self.y_min, self.y_min, self.y_max]], fill_color='orange', fill_alpha=0.4, line_color='orange', line_alpha=0.4)
-
-        twi12 = self.fig.patches(xs=[[et6, et6, et12, et12], [mt12, mt12, mt6, mt6]], ys=[[self.y_max, self.y_min, self.y_min, self.y_max], [self.y_max, self.y_min, self.y_min, self.y_max]], fill_color='navy', fill_alpha=0.2, line_color='navy', line_alpha=0.2)
-
-        twi18 = self.fig.patches(xs=[[et12, et12, et18, et18], [mt18, mt18, mt12, mt12]], ys=[[self.y_max, self.y_min, self.y_min, self.y_max], [self.y_max, self.y_min, self.y_min, self.y_max]], fill_color='navy', fill_alpha=0.5, line_color='navy', line_alpha=0.5)
-
-
-        twi_legend = Legend(items=[LegendItem(label="Civil Twi: {} {}".format(et6.strftime("%H:%M:%S"), mt6.strftime("%H:%M:%S")), renderers=[twi6]),
-                                   LegendItem(label="Nautical Twi: {}  {}".format(et12.strftime("%H:%M:%S"), mt12.strftime("%H:%M:%S")), renderers=[twi12]),
-                                   LegendItem(label="Astronomical Twi: {}  {}".format(et18.strftime("%H:%M:%S"), mt18.strftime("%H:%M:%S")), renderers=[twi18])], location=('top_left'), background_fill_color='white', background_fill_alpha=0.7)
-
-        civil_legend = LegendItem(label="Civil Twi: {} {}".format(et6.strftime("%H:%M:%S"), mt6.strftime("%H:%M:%S")), renderers=[twi6])
-
-        nautical_legend = LegendItem(label="Nautical Twi: {}  {}".format(et12.strftime("%H:%M:%S"), mt12.strftime("%H:%M:%S")), renderers=[twi12])
-
-        astronomical_legend = LegendItem(label="Astronomical Twi: {}  {}".format(et18.strftime("%H:%M:%S"), mt18.strftime("%H:%M:%S")), renderers=[twi18])
-
-        leg = self.fig.legend.pop()
-        leg.items.append(civil_legend)
-        leg.items.append(nautical_legend)
-        leg.items.append(astronomical_legend)
-
-        self.logger.debug(f'twilight done...')
 
 if __name__ == '__main__':
     import logging
@@ -211,7 +216,7 @@ if __name__ == '__main__':
     #subaru = observer.subaru
     site = get_site('subaru')
 
-    timezone = site.tz_local
+    local_tz = site.tz_local
     date = "2019-06-28"
 
 
@@ -224,7 +229,7 @@ if __name__ == '__main__':
 
 
     start_time = datetime.strptime("2019-06-28 17:00:00", "%Y-%m-%d %H:%M:%S")
-    start_time = start_time.replace(tzinfo=timezone)
+    start_time = start_time.replace(tzinfo=local_tz)
     t = start_time
     # if schedule starts after midnight, change start date to the
     # day before

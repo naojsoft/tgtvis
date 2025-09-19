@@ -29,115 +29,133 @@ from ginga.misc import Bunch
 
 
 class LaserPlot(BasePlot):
-
+    """
+    Laser/Collision plotting panel.
+    """
     def __init__(self, logger=None, **args):
         super(LaserPlot, self).__init__(logger, **args)
 
         self.toggles = []
 
     def plot_laser(self, site, tgt_data,  collision_time):
-
+        """
+        Top-level routine: draws base plot, collision boxes, target trajectory and moon.
+        - tgt_entry is expected to be an object with .tgt_calc and .tgt_info (Bunch or dataclass)
+        - collision_time is iterable of (start_dt, end_dt) pairs (naive or tz-aware)
+        """
         self.logger.debug('plot_laser...')
         timezone = site.tz_local
 
         self.logger.debug('plot_base...')
-        self.plot_base(site, tgt_data)
+        self.plot_base(site)
         self.collision(site, collision_time)
-
-        #info = tgt_data[0]
-        lt_data = list(map(lambda info: info.ut.astimezone(timezone), tgt_data[0].history))
-        alt_data = np.array(list(map(lambda info: info.alt_deg, tgt_data[0].history)))
-
         self.logger.debug('target trajecotry...')
-        self.target_trajectory(lt_data, alt_data, tgt_data)
-        self.moon_trajectory(tgt_data, lt_data, site)
-        #self.moon_distance(tgt_data, lt_data, alt_data)
-
+        self.target_trajectory(tgt_data, site)
+        self.logger.debug('moon trajecotry...')
+        self.moon_trajectory(tgt_data,  site)
         self.fig.legend.click_policy = "hide"
         self.logger.debug('plot_laser done...')
 
-    def moon_distance(self, tgt_data, lt_data, alt_data, moon_deg_color):
-
-        moon_sep = np.array(list(map(lambda info: info.moon_sep, tgt_data[0].history)))
-        min_interval = 12  # hour/5min
+    # ---------------------------
+    # Moon distance annotations
+    # ---------------------------
+    def moon_distance(self, moon_sep, lt_data, alt_data, color):
+        min_interval = 12  # every ~1 hr (5 min steps assumed)
         mt = lt_data[0:-1:min_interval]
         moon_sep = moon_sep[0:-1:min_interval]
         alt_interval = alt_data[0:-1:min_interval]
 
-        moon = []
-        xs = []
-        ys = []
-        names = []
-
+        xs, ys, texts = [], [], []
         for x, y, v in zip(mt, alt_interval, moon_sep):
-            if y < 0:
-                continue
-            xs.append(x)
-            ys.append(y)
-            names.append(f"{v:.1f}")
+            if y >= 0:
+                xs.append(x)
+                ys.append(y)
+                texts.append(f"{v:.1f}")
 
-        deg = self.fig.scatter(xs, ys, color=moon_deg_color, size=10, fill_alpha=0.5)
-        moon.append(deg)
-        txt = self.fig.text(xs, ys, text=names, text_font_size="11pt", text_align="center", text_baseline="bottom")
-        moon.append(txt)
+        scatter = self.fig.scatter(xs, ys, color=color, size=10, fill_alpha=0.5)
+        labels = self.fig.text(xs, ys, text=texts, text_font_size="11pt",
+                               text_align="center", text_baseline="bottom")
+        return [scatter, labels]
 
-        return moon
+    # ---------------------------
+    # Moon trajectory
+    # ---------------------------
+    def moon_trajectory(self, tgt_data, site):
+        moon_data = tgt_data.tgt_calc.moon_alt
+        moon_lt_data = [dt.astimezone(site.tz_local) for dt in tgt_data.tgt_calc.lt]
 
-    def moon_trajectory(self, tgt_data, lt_data, site):
-        # Plot moon trajectory and illumination
-        moon_data = np.array(list(map(lambda info: info.moon_alt, tgt_data[0].history)))
-        illum_time = lt_data[moon_data.argmax()]
+        illum_time = moon_lt_data[moon_data.argmax()]
         moon_illum = site.moon_phase(date=illum_time)
-        moon_color = 'orange' #'#666666'
-        moon_name = "Moon(Illum {:.2f} %)".format(moon_illum*100)
-        moon = self.fig.line(lt_data, moon_data, line_color=moon_color, line_alpha=0.7,  line_width=3, line_dash="dashed")
-        moon_legend = LegendItem(label=moon_name, renderers=[moon])
+
+        moon = self.fig.line(
+            moon_lt_data,
+            moon_data,
+            line_color="orange",
+            line_alpha=0.7,
+            line_dash="dashed",
+            line_width=3,
+        )
+
+        moon_legend = LegendItem(
+            label=f"Moon (Illum {moon_illum*100:.1f}%)",
+            renderers=[moon],
+        )
 
         leg = self.fig.legend.pop()
-        #print('popped leg={}'.format(leg.items))
-        leg.items.append(moon_legend)
-        #leg.items.insert(0, moon_legend)
+        leg.items.insert(0, moon_legend)
 
-    def target_trajectory(self, lt_data, alt_data, tgt_data):
+    # ---------------------------
+    # Target trajectory
+    # ---------------------------
+    def target_trajectory(self, tgt_data, site):
+        """
+        Plot a single target's altitude curve and moon-distance markers.
+        Expects tgt_entry.tgt_calc.alt_deg and .lt.
+        """
+        lt_data = [dt.astimezone(site.tz_local) for dt in tgt_data.tgt_calc.lt]
+        alt_data = tgt_data.tgt_calc.alt_deg
+        moon_sep = tgt_data.tgt_calc.moon_sep
+        self.logger.debug(f'lt_data={lt_data}')
+        self.logger.debug(f'alt_data={alt_data}')
 
         target_color = 'red'
         target = self.fig.line(lt_data, alt_data, line_color=target_color, line_width=3)
-        moon = self.moon_distance(tgt_data=tgt_data, lt_data=lt_data, alt_data=alt_data, moon_deg_color=target_color)
-        #print('moon={}'.format(moon))
 
-        #moon.insert(0, target)
-        moon.append(target)
-        #moon.insert(0, legend_title)
-
-        target_legend = Legend(items=[LegendItem(label="{} {} {}, Moon dist(deg)".format(tgt_data[0].target.name, tgt_data[0].target.ra, tgt_data[0].target.dec), renderers=moon)], location=('top_right'), background_fill_color='white', background_fill_alpha=0.5)
-
+        self.logger.debug('calling moon distance..')
+        moon_markers = self.moon_distance(moon_sep, lt_data, alt_data, target_color)
+        moon_markers.append(target)
+        target_legend = Legend(items=[LegendItem(label="{} {} {}, Moon dist(deg)".format(tgt_data.tgt_info.name, tgt_data.tgt_info.ra, tgt_data.tgt_info.dec), renderers=moon_markers)], location=('top_right'), background_fill_color='white', background_fill_alpha=0.5)
         self.fig.add_layout(target_legend)
 
-    def collision(self, site, collision_time):
+        self.logger.debug('target trajectory done....')
 
+    # ---------------------------
+    # Collision bands and toggles
+    # ---------------------------
+    def collision(self, site, collision_time):
+        """
+        Draws BoxAnnotation for each (start,end) pair and creates a Toggle that
+        shows/hides the corresponding BoxAnnotation.
+        - collision_time_iterable: iterable of (start_dt, end_dt)
+        """
         self.logger.debug('drawing collision...')
         code = '''object.visible = toggle.active'''
-        #toggles = []
 
         for s, e in collision_time:
             self.logger.debug(f'start={s}, end={e}, tz={site.timezone}')
             s = pytz.timezone("US/Hawaii").localize(s)
             e = pytz.timezone("US/Hawaii").localize(e)
 
-            #print('making callback...')
-            #callback = CustomJS.from_coffeescript(code=code, args={})
             callback = CustomJS(code=code, args={})
-            #print('making toggle...')
             toggle = Toggle(label="{}-{}".format(s.strftime("%Y-%m-%d %H:%M:%S"), e.strftime("%H:%M:%S")), button_type="default", active=True, width=20, height=25)
             toggle.js_on_click(callback)
             self.toggles.append(toggle)
-            #print('making laser annotation...')
             laser_collision = BoxAnnotation(left=s, right=e, bottom=self.y_min, top=self.y_max, fill_alpha=0.2, fill_color='magenta', line_color='magenta', line_alpha=0.2)
-            #print('adding layout...')
             self.fig.add_layout(laser_collision)
             callback.args = {'toggle': toggle, 'object': laser_collision}
 
-        #return toggles
+        self.logger.debug('drawing collision done...')
+
 
 if __name__ == '__main__':
     import sys

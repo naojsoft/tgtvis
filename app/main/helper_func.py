@@ -5,25 +5,21 @@ import csv
 import pandas as pd
 
 from bokeh.layouts import layout, row, column
-
 from bokeh.models.layouts import Row, Column
-
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, Angle
 import astropy.units as u
 
 from qplan.common import moon
 from qplan.util.site import site_subaru as subaru
 from qplan.entity import StaticTarget
 from ginga.misc import Bunch
-#from ginga.misc.log import get_logger
 
 from .target_plot import TargetPlot
 from .laser_plot import LaserPlot
 
 from oscript.parse.ope import get_vars_ope, get_coords2
-from g2base.astro import radec
 
 # soss pattern. match a sequence with at least 6 consecutive digits; '+', '-', and decimal point are optional.
 soss_pattern = r'(?<![+-])[+-]?\d{6,}(?:\.\d+)?'  #r'(?<![+-])[+-]?\b\d{6}\b(?:\.\d+)?'
@@ -47,6 +43,22 @@ dec_prog2 = re.compile(dec_pattern2)
 class TargetError(Exception):
     pass
 
+
+def ra_to_hms(ra_deg, sep=':', precision=2):
+    """
+    Convert Right Ascension from degrees to H:M:S format.
+    """
+    angle = Angle(ra_deg * u.deg)
+    hms = angle.to_string(unit=u.hour, sep=sep, precision=precision, pad=True)
+    return str(hms)
+
+def dec_to_dms(dec_deg, sep=':', precision=2):
+    """
+    Convert Declination from degrees to D:M:S format.
+    """
+    angle = Angle(dec_deg * u.deg)
+    dms = angle.to_string(unit=u.deg, sep=sep, precision=precision, alwayssign=True, pad=True)
+    return str(dms)
 
 def fix_time(year, month, day, hour, min, sec, logger):
 
@@ -87,10 +99,6 @@ def get_laser_info(data, logger):
         ra = c.ra.to_string(unit=u.hourangle, precision=3, sep=':', pad=True)
         dec = c.dec.to_string(sep=':', precision=2, alwayssign=True, pad=True)
         equinox = 2000.0
-        #targets.append(Bunch.Bunch(name=name, ra=ra, dec=dec, equinox=equinox))
-        #t = Bunch.Bunch(name=name, ra=ra, dec=dec, equinox=equinox)
-        #print('targets.....', targets)
-
         safe_time = []
         for t in d[3:]:
             t = t.split('-')
@@ -101,17 +109,11 @@ def get_laser_info(data, logger):
             eh, em, es = (int(e) for e in et.split(':'))
             start_time = fix_time(year, month, day, sh, sm, ss, logger)
             end_time = fix_time(year, month, day, eh, em, es, logger)
-            #print 'name, st et ....', name, start_time, end_time
-            #safe_time = laser_info.get((name, ra, dec))
-            #if not safe_time:
-            #    laser_info.update({(name, ra, dec): [(start_time, end_time)]})
-            #else:
             safe_time.append((start_time, end_time))
         targets.append(Bunch.Bunch(name=name, ra=ra, dec=dec, equinox=equinox, safe_time=safe_time))
 
     logger.debug(f'obs_date={obs_date}')
     logger.debug(f'targets={targets}')
-    #logger.debug('laser info. {}'.format(laser_info))
 
     return (obs_date, targets)
 
@@ -235,9 +237,8 @@ def read_csv(csvs, header, radec_unit,  logger):
                 name = row.name.strip()
                 logger.debug(f'ra={row.ra}, ra type={type(row.ra)}, dec={row.dec}, dec type={type(row.dec)}')
                 if radec_unit.upper() == 'DEG':
-                    hours, minutes, seconds = radec.degToHms(row.ra)
-                    ra =  radec.raHmsToString(hours, minutes, seconds, format='%02d%02d%06.3f')
-                    dec = radec.decDegToString(float(row.dec))
+                    ra = ra_to_hms(float(row.ra), sep='')
+                    dec = dec_to_dms(float(row.dec), sep='')
                     logger.debug(f'radec in Degree.  ra={ra}, dec={dec}')
                 else: # radec_unit is HOUR
                     if isinstance(row.ra, float):
@@ -299,7 +300,6 @@ def _validate_target(name, ra, dec, equinox, logger):
 
     return  Bunch.Bunch(name=name, ra=ra, dec=dec, coord=f'{ra} {dec}', equinox=equinox, err=errs)
 
-
 def validate_ra_dec_format(name, coord, equinox, logger, unit=''):
     name, name_error = validate_name(name)
     try:
@@ -310,9 +310,10 @@ def validate_ra_dec_format(name, coord, equinox, logger, unit=''):
             logger.debug(f'coord hourangle={coord}')
             c = SkyCoord(coord, unit=(u.hourangle, u.deg))
 
-        #hours, minutes, seconds = radec.degToHms(c.ra.deg[0])
-        ra = radec.raHmsToString(c.ra.hms.h, c.ra.hms.m, c.ra.hms.s, format='%02d:%02d:%06.3f')
-        dec = radec.decDegToString(c.dec.deg, format='%s%02d:%02d:%05.2f')
+        ra = ra_to_hms(c.ra.deg)
+        dec = dec_to_dms(c.dec.deg)
+        logger.debug(f"ra_hms={ra}, dec_dms={dec}")
+
         coord_error = None
     except Exception as e:
         logger.error(f'error={e}')
@@ -330,7 +331,6 @@ def validate_ra_dec_format(name, coord, equinox, logger, unit=''):
         ra_dec = Bunch.Bunch(name=name, ra=None, dec=None, coord=coord, equinox=equinox, err=errs)
     return ra_dec
 
-
 def verify_coord_format(name, coord, equinox, logger):
 
     logger.debug(f'coord=<{coord}>, type{type(coord)}')
@@ -347,12 +347,8 @@ def verify_coord_format(name, coord, equinox, logger):
     if len(matches) == 2:
         logger.debug(f'degree pattern={matches}')
         return validate_ra_dec_format(name, coord, equinox, logger, unit='degree')
-        #print(f'degree pattern. matches={matches}')
-
     else:
         return validate_ra_dec_format(name, coord, equinox, logger, unit='hourangle')
-
-
 
 def text_dict(target, equinox, logger):
 
@@ -381,8 +377,6 @@ def populate_interactive_target(target_list, mysite, mydate, logger):
 
     logger.debug('poplulate interactive target...')
 
-    targets = []
-
     title = f"Visibility for the night of {mydate}"
     mydate_time = f'{mydate} 17:00:00'
     mysite.set_date(mysite.get_date(mydate_time))
@@ -398,26 +392,28 @@ def populate_interactive_target(target_list, mysite, mydate, logger):
     plot = TargetPlot(logger, **fig_args)
 
     errors = []
+
+    targets = []
+
     for t in target_list:
         if not t.err:
-            targets.append(StaticTarget(name=t.name, ra=t.ra, dec=t.dec, equinox=t.equinox))
+            logger.debug(f'ra={t.ra},  dec={t.dec}')
+            tgt = StaticTarget(name=t.name, ra=t.ra, dec=t.dec, equinox=t.equinox)
+            tgt_info = Bunch.Bunch(name=t.name, ra=t.ra, dec=t.dec)
+            tgt_calc = mysite.get_target_info(tgt)
+            targets.append(Bunch.Bunch(tgt_calc=tgt_calc, tgt_info=tgt_info))
         else:
             errors.append(f'name={t.name}, coord={t.coord}, equinox={t.equinox}. err={t.err}')
+    logger.debug(f'target list={targets}')
 
-    target_data = []
-    for tgt in targets:
-        info_list = mysite.get_target_info(tgt)
-        target_data.append(Bunch.Bunch(history=info_list, target=tgt))
-
-    if not target_data:
+    if not targets:
         return (plot.fig, errors)
 
     try:
-        plot.plot_target(mysite, target_data)
+        plot.plot_target(mysite, targets)
     except Exception as e:
         logger.error(f'error: plotting targets. {e}')
         errors.append(f"plotting target(s). {e}")
-        #raise TargetError(f"ploting targets. {e}")
 
     return (plot.fig, errors)
 
@@ -444,11 +440,10 @@ def populate_interactive_laser(target, collision_time, mysite, mydate, logger):
     fig_args = {"x_axis_type": "datetime",  "title": title, "tools": TOOLS, "toolbar_location": toolbar_location, "height": plot_height, "width": plot_width} # "sizing_mode": sizing_mode} #  "output_backend": "webgl"}
 
     plot = LaserPlot(logger, **fig_args)
-
     tgt = StaticTarget(name=target.name, ra=target.ra, dec=target.dec, equinox=target.equinox)
-
-    info_list = mysite.get_target_info(tgt)
-    tgt_data = [Bunch.Bunch(history=info_list, target=tgt)]
+    tgt_info = Bunch.Bunch(name=target.name, ra=target.ra, dec=target.dec)
+    tgt_calc = mysite.get_target_info(tgt)
+    tgt_data = Bunch.Bunch(tgt_calc=tgt_calc, tgt_info=tgt_info)
 
     try:
         logger.debug('calling plot_laser...')

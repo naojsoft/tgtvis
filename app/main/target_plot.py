@@ -6,7 +6,6 @@ from math import pi, isclose
 import random
 from operator import itemgetter
 
-
 from bokeh.models import BoxAnnotation
 from bokeh.layouts import gridplot
 from bokeh.plotting import figure, output_file, show
@@ -31,109 +30,124 @@ import matplotlib.dates as mpl_dt
 
 
 class TargetPlot(BasePlot):
+    """
+    Plot target visibility and trajectories (including Moon trajectory/distance)
+    for given targets at a specific site.
+    """
 
-    def __init__(self, logger=None, **args):
-        super(TargetPlot, self).__init__(logger, **args)
+    def __init__(self, logger=None, **kwargs):
+        super().__init__(logger, **kwargs)
 
     def plot_target(self, site, tgt_data):
+        self.logger.debug("Plotting targets...")
+        self.plot_base(site)
 
-        self.logger.debug(f'plotting targets...')
-        timezone = site.tz_local
-        self.plot_base(site, tgt_data)
-
-        lt_data = list(map(lambda info: info.ut.astimezone(timezone), tgt_data[0].history))
-
-        self.logger.debug(f'target trajectory...')
-        self.target_trajectory(lt_data, tgt_data)
-
-        self.logger.debug(f'calling moon trajectory...')
-        self.moon_trajectory(tgt_data, lt_data, site)
+        self.target_trajectory(tgt_data, site)
+        self.moon_trajectory(tgt_data, site)
 
         self.fig.legend.click_policy = "hide"
+        self.logger.debug("plot_target done.")
 
-        self.logger.debug(f'plot_target done...')
+    # ---------------------------
+    # Moon trajectory
+    # ---------------------------
+    def moon_trajectory(self, tgt_data, site):
+        moon_data = tgt_data[0].tgt_calc.moon_alt
+        moon_lt_data = [dt.astimezone(site.tz_local) for dt in tgt_data[0].tgt_calc.lt]
 
-    def moon_trajectory(self, tgt_data, lt_data, site):
-
-        self.logger.debug(f'moon_trajectory...')
-        # Plot moon trajectory and illumination
-        moon_data = np.array(list(map(lambda info: info.moon_alt, tgt_data[0].history)))
-        illum_time = lt_data[moon_data.argmax()]
+        illum_time = moon_lt_data[moon_data.argmax()]
         moon_illum = site.moon_phase(date=illum_time)
-        moon_color = "orange" # '#666666'
-        moon_name = "Moon(Illum {:.2f} %)".format(moon_illum*100)
-        self.logger.debug(f'moon name={moon_name}')
-        moon = self.fig.line(lt_data, moon_data, line_color=moon_color, line_alpha=0.5, line_dash="dashed",  line_width=3)
-        moon_legend = LegendItem(label=moon_name, renderers=[moon])
-        self.logger.debug(f'moon legend={moon_legend}')
+
+        moon = self.fig.line(
+            moon_lt_data,
+            moon_data,
+            line_color="orange",
+            line_alpha=0.5,
+            line_dash="dashed",
+            line_width=3,
+        )
+
+        moon_legend = LegendItem(
+            label=f"Moon (Illum {moon_illum*100:.1f}%)",
+            renderers=[moon],
+        )
 
         leg = self.fig.legend.pop()
         leg.items.insert(0, moon_legend)
-        self.logger.debug(f'moon_trajectory done...')
 
-    def moon_distance(self, info, lt_data, alt_data, color):
-
-        self.logger.debug(f'moon_distance...')
-        moon_sep = np.array(list(map(lambda info: info.moon_sep, info.history)))
-        min_interval = 12  # hour/5min
+    # ---------------------------
+    # Moon distance annotations
+    # ---------------------------
+    def moon_distance(self, moon_sep, lt_data, alt_data, color):
+        min_interval = 12  # every ~1 hr (5 min steps assumed)
         mt = lt_data[0:-1:min_interval]
         moon_sep = moon_sep[0:-1:min_interval]
         alt_interval = alt_data[0:-1:min_interval]
 
-        moon = []
-        xs = []
-        ys = []
-        texts = []
+        xs, ys, texts = [], [], []
         for x, y, v in zip(mt, alt_interval, moon_sep):
-            if y < 0:
-                continue
+            if y >= 0:
+                xs.append(x)
+                ys.append(y)
+                texts.append(f"{v:.1f}")
 
-            xs.append(x)
-            ys.append(y)
-            texts.append(f'{v:.1f}')
+        scatter = self.fig.scatter(xs, ys, color=color, size=10, fill_alpha=0.8)
+        labels = self.fig.text(xs, ys, text=texts, text_font_size="9pt",
+                               text_align="center", text_baseline="bottom")
+        return [scatter, labels]
 
-        deg = self.fig.scatter(xs, ys, color=color, size=10.0,  fill_alpha=0.8)
-        moon.append(deg)
-        txt = self.fig.text(xs, ys, text=texts, text_font_size="9pt", text_align="center", text_baseline="bottom")
-        moon.append(txt)
-
-        return moon
-
-    def target_trajectory(self, lt_data, tgt_data):
-
+    # ---------------------------
+    # Target trajectories
+    # ---------------------------
+    def target_trajectory(self, tgt_data, site):
         legend_items = []
 
-        self.logger.debug(f'TARGET DATA type={type(tgt_data)}')
+        for  target in sorted(tgt_data, key=lambda k: k.tgt_info.name, reverse=False):
+        #for target in sorted(tgt_data, key=lambda t: t.name):
+            lt_data = [dt.astimezone(site.tz_local) for dt in target.tgt_calc.lt]
+            alt_data = target.tgt_calc.alt_deg
+            moon_sep = target.tgt_calc.moon_sep
 
-        #for i, info in enumerate(tgt_data):
-        for info in sorted(tgt_data, key=lambda k: k.target.name, reverse=False):
-            alt_data = np.array(list(map(lambda info: info.alt_deg, info.history)))
-            alt_min = np.argmin(alt_data)
-            color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
-            self.logger.debug(f'color={color}')
-            target = self.fig.line(lt_data, alt_data, line_color=color, line_width=3)
+            color = f"#{random.randint(0, 0xFFFFFF):06x}"
+            target_line = self.fig.line(lt_data, alt_data, line_color=color, line_width=3)
 
-            x = lt_data[alt_data.argmax()]
-            y = alt_data.max()
-            targetname = info.target.name
+            # Label at maximum altitude
+            x = lt_data[np.argmax(alt_data)]
+            y = max(alt_data)
+            target_label = self.fig.text(
+                x, y + 1,
+                text=[target.tgt_info.name],
+                text_color=color,
+                text_alpha=1.0,
+                text_align="center",
+                text_baseline="bottom"
+            )
 
-            self.logger.debug(f'x={x}, y={y}, targetname={targetname}')
-            target_label = self.fig.text([x,], [y,], text=[targetname,], text_color=color, text_alpha=1.0, text_align='center', text_baseline ='bottom')
+            moon_markers = self.moon_distance(moon_sep, lt_data, alt_data, color)
+            renderers = [target_line, target_label] + moon_markers
 
-            self.logger.debug(f'callling moon distance...')
-            moon = self.moon_distance(info, lt_data, alt_data, color)
-            moon.insert(0, target_label)
-            moon.insert(0, target)
+            legend_items.append(
+                LegendItem(
+                    label=f"{target.tgt_info.name} {target.tgt_info.ra} {target.tgt_info.dec}",
+                    renderers=renderers
+                )
+            )
 
-            legend_items.append(LegendItem(label=f"{targetname} {info.target.ra} {info.target.dec}", renderers=moon))
-
-        legend_title = LegendItem(label="Name,Ra and Dec.  Moon distance in deg(circle)", renderers=[])
+        legend_title = LegendItem(
+            label="Name, RA, Dec (Moon distance in shown as circles)",
+            renderers=[]
+        )
         legend_items.insert(0, legend_title)
 
-        target_legends = Legend(items=legend_items, location="top_right", background_fill_color='white', background_fill_alpha=0.7)
-        self.fig.add_layout(target_legends, 'right')
+        self.fig.add_layout(
+            Legend(items=legend_items,
+                   location="top_right",
+                   background_fill_color="white",
+                   background_fill_alpha=0.7),
+            "right"
+        )
 
-        self.logger.debug(f'target_trajectory done...')
+
 
 if __name__ == '__main__':
     import sys

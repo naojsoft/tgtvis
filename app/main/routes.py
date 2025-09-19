@@ -15,7 +15,10 @@ from flask import current_app as app
 from werkzeug.utils import secure_filename
 
 from functools import wraps, update_wrapper
+
 from . import helper_func as helper
+from app.main.target_plot import TargetPlot
+from app.main.laser_plot import LaserPlot
 
 import tempfile
 
@@ -249,6 +252,10 @@ def Text():
     targets = helper.text_dict(target=target, equinox=equinox, logger=app.logger)
     mysite = helper.site(request.form.get('site'))
     mydate = request.form.get('date')
+
+
+    app.logger.debug(f'targets={targets}')
+
 
     try:
         fig, errors  = helper.populate_interactive_target(target_list=targets, mysite=mysite, mydate=mydate, logger=app.logger)
