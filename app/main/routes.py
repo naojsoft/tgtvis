@@ -17,8 +17,8 @@ from werkzeug.utils import secure_filename
 from functools import wraps, update_wrapper
 
 from . import helper_func as helper
-from app.main.target_plot import TargetPlot
-from app.main.laser_plot import LaserPlot
+from .target_plot import TargetPlot
+from .laser_plot import LaserPlot
 
 import tempfile
 
