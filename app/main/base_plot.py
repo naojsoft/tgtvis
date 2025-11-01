@@ -59,7 +59,7 @@ class BasePlot:
         self._draw_middle_night(sunset, sunrise)
         self.logger.debug(f"drawing airmass..")
         self._draw_airmass_axis()
-        self.logger.debug(f"drawing moon anno... site={type(site)}")
+        self.logger.debug(f"drawing moon anno... site type={type(site)}")
         self._draw_moon_annotation(site, sunrise, local_timezone)
 
         self.logger.debug(f"legend click policy..")
@@ -112,8 +112,16 @@ class BasePlot:
 
     def _draw_moon_annotation(self, site, sunrise, local_timezone):
         """Display moon RA/Dec at midnight."""
-        midnight_local_timezone = datetime(site.date.year, site.date.month, site.date.day + 1,
-                            0, 0, 0, tzinfo=local_timezone)
+
+        self.logger.debug(f"site={site}")
+        today_midnight = datetime(
+            site.date.year,
+            site.date.month,
+            site.date.day,
+            0, 0, 0,
+            tzinfo=local_timezone)
+
+        midnight_local_timezone = today_midnight + timedelta(days=1)
 
         self.logger.debug(f"midnight={midnight_local_timezone}, site={site.__dir__()}")
 
