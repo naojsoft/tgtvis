@@ -31,6 +31,7 @@ class BasePlot:
     def __init__(self, logger=None, **fig_args):
         self.logger = logger
         self.utc = tz.gettz('UTC')
+        self.cur_tz = tz.gettz('HST')
         self.y_min = 0
         self.y_max = 90
         self.logger.debug(f"Initializing BasePlot with args: {fig_args}")
@@ -165,9 +166,9 @@ class BasePlot:
         mt6 = site.morning_twilight_6(sunset)
 
         twilight_zones = [
-            ("Civil Twi", sunset, et6, mt6, sunrise, "orange", 0.4),
-            ("Nautical Twi", et6, et12, mt12, mt6, "navy", 0.2),
-            ("Astronomical Twi", et12, et18, mt18, mt12, "navy", 0.5),
+            ("Civil Twilight", sunset, et6, mt6, sunrise, "orange", 0.4),
+            ("Nautical Twilight", et6, et12, mt12, mt6, "navy", 0.2),
+            ("Astronomical Twilight", et12, et18, mt18, mt12, "navy", 0.5),
         ]
 
         for name, ev_start, ev_end, mn_start, mn_end, color, alpha in twilight_zones:
@@ -184,7 +185,7 @@ class BasePlot:
                 fill_color=color, fill_alpha=alpha,
                 line_color=color, line_alpha=alpha
             )
-            label = f"{name}: {ev_start.strftime('%H:%M:%S')} {mn_end.strftime('%H:%M:%S')}"
+            label = f"{name}: {ev_end.strftime('%H:%M:%S')} {mn_start.strftime('%H:%M:%S')}"
             self._append_legend_item(label, [patch])
 
     def _draw_sunset_sunrise(self, sunset, sunrise):
@@ -196,8 +197,12 @@ class BasePlot:
 
     def _sunset_sunrise(self, site):
         """Return sunset and sunrise datetimes for the site/date."""
-        sunset = site.sunset(site.date)
-        sunrise = site.sunrise(site.date)
+        # noon on the observation date
+        noon = self._get_obsdate_noon(site)
+        prev_midnight = noon - timedelta(hours=12)
+
+        sunset = site.sunset(noon)
+        sunrise = site.sunrise(noon)
         self.logger.debug(f"Sunset: {sunset}, Sunrise: {sunrise}")
         return sunset, sunrise
 
@@ -210,6 +215,26 @@ class BasePlot:
             self.fig.add_layout(leg, 'below')
 
         leg.items.append(LegendItem(label=label, renderers=renderers))
+
+    def _get_obsdate_noon(self, site):
+        """A mostly internal procedure to get the date/time at noon
+        on the day of observation.
+        NOTE: this is the noon of the DAY that observation begins at
+        sunset. So, for example, at 3:00 (AM) it is noon on the day BEFORE
+        """
+        dt = site.date.astimezone(self.cur_tz)
+
+        # noon and midnight on the current date
+        noon = dt.replace(hour=12, minute=0, second=0, microsecond=0)
+        prev_noon = noon - timedelta(hours=24)
+        prev_midnight = noon - timedelta(hours=12)
+        sunrise_today = site.sunrise(prev_midnight)
+
+        if dt < sunrise_today:
+            # it's not yet daytime on this date
+            noon = prev_noon
+
+        return noon
 
 
 if __name__ == '__main__':
