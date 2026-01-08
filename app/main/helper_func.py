@@ -22,7 +22,7 @@ from .laser_plot import LaserPlot
 from oscript.parse.ope import get_vars_ope, get_coords2
 
 # soss pattern. match a sequence with at least 6 consecutive digits; '+', '-', and decimal point are optional.
-soss_pattern = r'(?<![+-])[+-]?\d{6,}(?:\.\d+)?'  #r'(?<![+-])[+-]?\b\d{6}\b(?:\.\d+)?'
+soss_pattern = r'^(?<![+-])[+-]?\d{6,}(?:\.\d+)?'  #r'(?<![+-])[+-]?\b\d{6}\b(?:\.\d+)?'
 
 # degree pattern  1-3 digits, decimal points
 deg_pattern = r"[+-]?\d{1,3}(?:\.\d+)?"
@@ -334,18 +334,19 @@ def validate_ra_dec_format(name, coord, equinox, logger, unit=''):
 def verify_coord_format(name, coord, equinox, logger):
 
     logger.debug(f'coord=<{coord}>, type{type(coord)}')
-    matches = re.findall(soss_pattern , coord)
-    if len(matches) == 2:
-        logger.debug(f'soss pattern={matches}')
-        coord = coord.split()
-        ra = coord[0].strip()
-        dec = coord[1].strip()
+    # Pattern matching to detect SOSS-format coordinates is much
+    # easier if the "coord" string is split into separate ra/dec values.
+    coords = coord.split()
+    ra = coords[0].strip()
+    dec = coords[1].strip()
+    if (ra_match := re.match(soss_pattern, ra)) and (dec_match := re.match(soss_pattern, dec)):
+        logger.debug(f'soss pattern {ra_match=} {dec_match=}')
         res = _validate_target(name, ra, dec, equinox, logger)
         return res
 
     matches = re.findall(deg_pattern, coord)
+    logger.debug(f'degree pattern={matches}')
     if len(matches) == 2:
-        logger.debug(f'degree pattern={matches}')
         return validate_ra_dec_format(name, coord, equinox, logger, unit='degree')
     else:
         return validate_ra_dec_format(name, coord, equinox, logger, unit='hourangle')
